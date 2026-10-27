@@ -34,12 +34,13 @@
   .b.primary:hover{background:var(--navy2);color:#fff}
   .b.warn{color:var(--bad);border-color:#f0cccc}
   .b.active{background:var(--accent);border-color:var(--accent);color:#231403}
-  .grid{display:grid;grid-template-columns:1fr 340px;gap:14px}
+  .grid{display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start}
   @media(max-width:980px){.grid{grid-template-columns:1fr}}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
-  #map{height:360px;width:100%}
+  #map{height:368px;width:100%}
   @media(max-width:980px){#map{height:300px}}
-  .side{padding:0}
+  .side{padding:0;height:370px;overflow-y:auto;position:relative}
+  @media(max-width:980px){.side{height:auto;max-height:none}}
   .kpis{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
   .kpi{background:#fff;padding:14px 16px}
   .kpi .n{font-size:25px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:var(--navy)}
@@ -546,7 +547,7 @@ async function snapRango(pts,tok){
 }
 function atenuarPuntos(on){if(!HAS_MAP)return;ptLayer.eachLayer(function(l){l.setStyle(on?{opacity:.25,fillOpacity:.2}:{opacity:1,fillOpacity:.95});});}
 function limpiarSel(){VER_TOKEN++;if(HAS_MAP){hlLayer.clearLayers();atenuarPuntos(false);fitAll();}
-  [].forEach.call(document.querySelectorAll('#epiBody tr.sel'),function(r){r.classList.remove('sel');});el('verTodo').hidden=true;el('epiCard').hidden=true;}
+  [].forEach.call(document.querySelectorAll('#epiBody tr.sel'),function(r){r.classList.remove('sel');});el('verTodo').hidden=true;el('epiCard').hidden=true;var sd=el('epiCard').parentElement;if(sd)sd.scrollTop=0;}
 el('verTodo').onclick=limpiarSel;
 function verEpisodio(i,tr){
   var e=EPIS[i];if(!e)return;
@@ -579,7 +580,7 @@ function verEpisodio(i,tr){
     '<span style="color:#64748b">'+pe.ubic+'</span>'+
     '<div class="rumbo">'+e.sent.txt+'<br>Venía de: '+lugar(pi)+'<br>Siguió hacia: '+lugar(pf)+'</div>'+condFicha(e.cond);
   var card=el('epiCard');
-  var setCard=function(t){card.innerHTML=base+'<div class="est">'+t+'</div>';card.hidden=false;el('epiX').onclick=limpiarSel;};
+  var setCard=function(t){card.innerHTML=base+'<div class="est">'+t+'</div>';card.hidden=false;el('epiX').onclick=limpiarSel;var sd=card.parentElement;if(sd)sd.scrollTop=card.offsetTop;};
   var pm=L.circleMarker([pe.lat,pe.lon],{radius:13,color:'#ffd400',weight:4,fillColor:'#d63a3a',fillOpacity:.9,zIndexOffset:900}).addTo(gMarc);
   var est=el('chkSnap').checked?'Ajustando el recorrido a los caminos…':'Recorrido aproximado: líneas entre registros.';
   setCard(est);
