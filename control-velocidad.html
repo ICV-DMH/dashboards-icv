@@ -92,6 +92,7 @@
   .note{background:#fffaf0;border:1px solid #f2e2c4;border-radius:10px;padding:11px 14px;font-size:12.5px;color:#7a5a10;margin-bottom:14px;line-height:1.5}
   #file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
   .b{user-select:none}
+  a.b{text-decoration:none}
   .steps{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
   @media(max-width:860px){.steps{grid-template-columns:1fr}}
   .step{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:14px 16px;display:flex;gap:14px;align-items:flex-start}
@@ -144,8 +145,8 @@
       <div class="stnum" id="stn2">2</div>
       <div class="stbody">
         <div class="sttit">Checklist pre-uso · conductores</div>
-        <div class="stdesc" id="ckDesc">Respuestas del formulario de pre-uso: Microsoft Forms (<b>.xlsx</b>, “Abrir en Excel” → Descargar) o el formulario anterior de Google (<b>.csv</b> / <b>.zip</b>). Se usa para identificar al conductor de cada exceso; no queda guardado en el navegador.</div>
-        <div class="btns"><button class="b primary" id="btnM365" style="display:none">↻ Actualizar registro</button><label class="b primary" id="btnCk" for="file2" tabindex="0">⬆ Cargar checklist (.xlsx / .csv)</label><button class="b warn" id="btnCkReset" title="Quitar el checklist cargado">✕ Quitar</button></div>
+        <div class="stdesc" id="ckDesc">Cada envío del formulario pre-uso queda guardado solo en la lista <b>Registro Pre-Uso Camionetas</b>. Ábrela, presiona <b>Exportar → Exportar a CSV</b> y carga ese archivo (o arrástralo junto con el de Salfa). También acepta el Excel de Forms o el .csv/.zip del formulario anterior de Google.</div>
+        <div class="btns"><a class="b" id="btnLista" href="https://ingenieriacivilvicentesa.sharepoint.com/sites/gestinssoicv-dmh/Lists/RegistroPreUsoCamionetas/AllItems.aspx" target="_blank" rel="noopener">↗ Abrir registro</a><label class="b primary" id="btnCk" for="file2" tabindex="0">⬆ Cargar registro (.csv)</label><button class="b warn" id="btnCkReset" title="Quitar el checklist cargado">✕ Quitar</button></div>
         <div class="ststat" id="st2">Pendiente</div>
       </div>
     </div>
@@ -227,7 +228,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
 <script>
 if(typeof L==='undefined'){document.getElementById('introNote').innerHTML='<b>No se pudo cargar la librería del mapa.</b> Abre el archivo descargado en Chrome con conexión a internet.';}
 var PUNTOS = [{"patente":"VHWF-69","fecha":"18-10-2026 10:01","kmh":102,"lat":-22.363614,"lon":-68.931738,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:02","kmh":103,"lat":-22.365416,"lon":-68.931764,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:02","kmh":102,"lat":-22.375151,"lon":-68.929949,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:02","kmh":102,"lat":-22.37718,"lon":-68.929761,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:02","kmh":104,"lat":-22.379208,"lon":-68.929722,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:03","kmh":105,"lat":-22.381029,"lon":-68.92973,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:03","kmh":103,"lat":-22.382881,"lon":-68.929749,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:03","kmh":101,"lat":-22.392229,"lon":-68.931394,"ubic":"Ruta 24, Calama, Región de Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:03","kmh":101,"lat":-22.394154,"lon":-68.930667,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:04","kmh":105,"lat":-22.395922,"lon":-68.930277,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:04","kmh":104,"lat":-22.397723,"lon":-68.930071,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:04","kmh":105,"lat":-22.399517,"lon":-68.929837,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:04","kmh":103,"lat":-22.401317,"lon":-68.929611,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:04","kmh":107,"lat":-22.407741,"lon":-68.925352,"ubic":"Ruta 24, Calama, Región de Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:05","kmh":106,"lat":-22.409046,"lon":-68.923949,"ubic":"RUTA 24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:05","kmh":105,"lat":-22.410368,"lon":-68.92254,"ubic":"Sin Ubicacion, Calama, El Loa, II Region de Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:05","kmh":101,"lat":-22.412121,"lon":-68.921449,"ubic":"24, Calama, II Antofagasta, Chile"},{"patente":"VHWF-69","fecha":"18-10-2026 10:05","kmh":102,"lat":-22.420012,"lon":-68.922584,"ubic":"24, Calama, II Antofagasta, Chile"}];
@@ -350,6 +350,9 @@ function calzarPatente(raw,interno,F){
 function marcaT(s){s=String(s||'').replace(/[  ]/g,' ');
   var m=/(\d{4})\/(\d{2})\/(\d{2}) (\d{1,2}):(\d{2}):(\d{2})\s*([ap])/i.exec(s);
   if(m){var h=(+m[4])%12+(m[7].toLowerCase()==='p'?12:0);return new Date(+m[1],+m[2]-1,+m[3],h,+m[5],+m[6]);}
+  if(/^\s*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})\s*$/.test(s)){var di=new Date(s.trim());if(!isNaN(di))return di;}
+  m=/(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap])\.?\s*m/i.exec(s); // 10/27/2026 7:36 PM (lista de SharePoint)
+  if(m){var hu=(+m[4])%12+(m[7].toLowerCase()==='p'?12:0);return new Date(+m[3],+m[1]-1,+m[2],hu,+m[5],+(m[6]||0));}
   m=/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(s);
   if(m)return new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5],+(m[6]||0));
   m=/(\d{4})[\/-](\d{2})[\/-](\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(s);
@@ -369,27 +372,27 @@ function normRut(v){var s=String(v||'').toUpperCase().replace(/[^0-9K]/g,'');if(
 function procesarChecklist(text,nombre){
   var rows=Array.isArray(text)?text:parseCSV(String(text).replace(/^﻿/,''));if(!rows.length)return {err:'El archivo está vacío.'};
   var hd=rows[0].map(sinAcento),ix=function(n){return hd.indexOf(n);};
-  var iM=[ 'marca temporal','hora de finalizacion','completion time','hora de inicio','start time'].map(ix).filter(function(i){return i>=0;})[0];if(iM===undefined)iM=-1;var iN=ix('nombre conductor'),iP=ix('patente'),iI=ix('numero interno'),iF=ix('fecha'),iR=hd.findIndex(function(x){return x.indexOf('rut')===0;});
+  var iM=[ 'marca temporal','fecha y hora','hora de finalizacion','completion time','hora de inicio','start time'].map(ix).filter(function(i){return i>=0;})[0];if(iM===undefined)iM=-1;var iN=ix('nombre conductor');if(iN<0)iN=ix('conductor');var iP=ix('patente'),iI=ix('numero interno'),iF=ix('fecha'),iR=hd.findIndex(function(x){return x.indexOf('rut')===0;});
   var iH=hd.findIndex(function(x){return x.indexOf('hora')===0;});if(iH<0&&iF>=0&&(hd[iF+1]===''||/^pregunta/.test(hd[iF+1]||'')))iH=iF+1;
   if(iN<0||iP<0||(iF<0&&iM<0))return {err:'No parece el checklist de pre-uso: faltan las columnas “Nombre Conductor”, “Patente” o “Fecha”.'};
   var ixRev=[];hd.forEach(function(x,i){if(/^revision del turno.*\[/.test(x))ixRev.push(i);});
-  var iApto=ix('declaracion del conductor');
-  var iTurno=hd.findIndex(function(x){return x.indexOf('esta camioneta ya tiene la revision completa')>=0;});
-  var iNov=hd.findIndex(function(x){return x.indexOf('hay alguna falla')>=0||x.indexOf('detectaste alguna falla')>=0;});
+  var iApto=ix('declaracion del conductor');if(iApto<0)iApto=ix('apto');
+  var iTurno=hd.findIndex(function(x){return x.indexOf('esta camioneta ya tiene la revision completa')>=0;});if(iTurno<0)iTurno=ix('revision del turno');
+  var iNov=hd.findIndex(function(x){return x.indexOf('hay alguna falla')>=0||x.indexOf('detectaste alguna falla')>=0;});if(iNov<0)iNov=ix('falla');
   var rf=ixRev.length>0||iTurno>=0;
-  var F=flotaMapa(),out=[],corr=0,sin=0,tmin=null,tmax=null;
+  var F=flotaMapa(),out=[],corr=0,sin=0,prueba=0,tmin=null,tmax=null;
   for(var r=1;r<rows.length;r++){var c=rows[r];if(!c||c.length<3)continue;
     var cp=calzarPatente(c[iP],iI>=0?c[iI]:'',F);if(!cp){sin++;continue;}if(cp.how==='corregida')corr++;
     var t=momentoCk(iF>=0?c[iF]:'',iH>=0?c[iH]:'',iM>=0?c[iM]:'');if(!t)continue;
     var nm=String(c[iN]||'').replace(/\s+/g,' ').trim().toLowerCase().replace(/(^|\s)\S/g,function(x){return x.toUpperCase();});if(!nm)continue;
-    var rut=iR>=0?normRut(c[iR]):'';var o={pat:cp.p,t:t.getTime(),cond:nm,rut:rut};
+    var rut=iR>=0?normRut(c[iR]):'';if(rut==='11111111-1'||/^prueba sistema$/i.test(nm)){prueba++;continue;}var o={pat:cp.p,t:t.getTime(),cond:nm,rut:rut};
     if(rf){
       o.noApto=iApto>=0&&/^no/i.test(String(c[iApto]||'').trim());
       o.rev=iTurno>=0?/^no/i.test(String(c[iTurno]||'').trim()):ixRev.some(function(i){return String(c[i]||'').trim()!=='';});
       o.falla=(iNov>=0&&/^s/i.test(String(c[iNov]||'').trim()))||c.some(function(v){return /^falla$/i.test(String(v||'').trim());})||ixRev.some(function(i){return /falla/i.test(c[i]||'');});}
     out.push(o);if(!tmin||t<tmin)tmin=t;if(!tmax||t>tmax)tmax=t;}
   out.sort(function(a,b){return a.t-b.t;});
-  var info={n:out.length,corr:corr,sin:sin,ini:tmin,fin:tmax,archivo:nombre};
+  var info={n:out.length,corr:corr,sin:sin,prueba:prueba,ini:tmin,fin:tmax,archivo:nombre};
   if(rf){ // Formulario "Registro rápido" (RF 10): revisión completa válida 12 h por camioneta.
     var ultRev={},sinRev=[],nRev=0,nFalla=0,nNoApto=0;
     out.forEach(function(k){
@@ -410,7 +413,7 @@ function cargarChecklist(f){
   if(!f)return;setPaso(2,'wait','Leyendo '+f.name+'…');
   var fin=function(text){var r=procesarChecklist(text,f.name);
     if(r.err){setPaso(2,'err',r.err);return;}
-    if(!r.ck.length){setPaso(2,'err','No encontré checklists con patente y fecha válidas en '+f.name+'.');return;}
+    if(!r.ck.length){setPaso(2,'err',r.info&&r.info.prueba?'El archivo solo tiene respuestas de prueba ('+r.info.prueba+'); todavía no hay registros reales.':'No encontré checklists con patente y fecha válidas en '+f.name+'.');return;}
     CK=r.ck;CKINFO=r.info;render();};
   if(/\.xlsx$/i.test(f.name)){
     if(typeof XLSX==='undefined'){setPaso(2,'err','No se pudo cargar el lector de Excel (revisa la conexión a internet).');return;}
@@ -460,9 +463,9 @@ function actualizarPasos(epis){
   else if(!PUNTOS.length)setPaso(1,'','Pendiente');
   else{var ts=PUNTOS.map(function(p){return p._t;}).filter(Boolean);var a=new Date(Math.min.apply(null,ts)),b=new Date(Math.max.apply(null,ts));
     setPaso(1,'ok','✓ '+PUNTOS.length.toLocaleString('es-CL')+' registros · '+fdia(a)+' al '+fdia(b));}
-  if(!CKINFO){setPaso(2,CKPEND?CKPEND[0]:'',CKPEND?CKPEND[1]:'Pendiente');return;}
+  if(!CKINFO){setPaso(2,'','Pendiente');return;}
   var ok=0,pr=0,no=0;epis.forEach(function(e){if(!e.cond)return;if(e.cond.st==='ok')ok++;else if(e.cond.st==='prob')pr++;else no++;});
-  var t='✓ '+CKINFO.n.toLocaleString('es-CL')+' checklists · '+fdia(CKINFO.ini)+' al '+fdia(CKINFO.fin)+(CKINFO.corr?' · '+CKINFO.corr+' patentes corregidas':'')+(CKINFO.sin?' · '+CKINFO.sin+' sin reconocer':'');
+  var t='✓ '+CKINFO.n.toLocaleString('es-CL')+' checklists · '+fdia(CKINFO.ini)+' al '+fdia(CKINFO.fin)+(CKINFO.corr?' · '+CKINFO.corr+' patentes corregidas':'')+(CKINFO.sin?' · '+CKINFO.sin+' sin reconocer':'')+(CKINFO.prueba?' · '+CKINFO.prueba+' de prueba ignorada(s)':'');
   if(epis.length)t+='<br>Conductor identificado en <b>'+ok+' de '+epis.length+'</b> episodios'+(pr?' · '+pr+' probable(s)':'')+(no?' · <span style="color:#d63a3a">'+no+' sin checklist</span>':'');
   var R=CKINFO.rf10;
   if(R){t+='<br>Revisión de turno (RF 10): <b>'+R.rev+'</b> revisiones completas'+(R.falla?' · <span style="color:#d63a3a">'+R.falla+' con falla</span>':'')+(R.noApto?' · <span style="color:#d63a3a">'+R.noApto+' declaración(es) de no apto</span>':'');
@@ -474,56 +477,6 @@ el('file2').addEventListener('change',function(ev){cargarChecklist(ev.target.fil
 el('btnCk').addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();el('file2').click();}});
 el('btnCkReset').onclick=function(){CK=[];CKINFO=null;render();};
 
-/* ---- Registro automático: lista de SharePoint "Registro Pre-Uso Camionetas" (llenada por Power Automate en cada envío del formulario) ----
-   Para activarlo basta con pegar en clientId el "Id. de aplicación (cliente)" del registro de aplicación en Entra
-   (SPA, URI de redirección = esta página, permiso delegado Microsoft Graph Sites.Read.All). */
-var M365={
-  clientId:'',
-  tenantId:'68aa5429-2f24-44d6-8a32-7b9d1dcd8b65',
-  sitio:'ingenieriacivilvicentesa.sharepoint.com:/sites/gestinssoicv-dmh',
-  lista:'784e0450-a8ae-4e28-8f5d-299fc647e2d7',
-  scopes:['https://graph.microsoft.com/Sites.Read.All']
-};
-var PCA=null,CKPEND=null;
-function pend(cls,txt){CKPEND=[cls,txt];setPaso(2,cls,txt);}
-function modoManual(msg){
-  el('btnCk').style.display='';el('btnCk').innerHTML='⬆ Cargar checklist manualmente';
-  if(msg)pend('err',msg+'<br>Mientras tanto puedes cargar el Excel de respuestas de Forms como respaldo.');
-}
-async function tokenM365(interactivo){
-  if(!PCA){PCA=new msal.PublicClientApplication({auth:{clientId:M365.clientId,authority:'https://login.microsoftonline.com/'+M365.tenantId,redirectUri:location.origin+location.pathname},cache:{cacheLocation:'localStorage'}});await PCA.initialize();}
-  var cuenta=PCA.getAllAccounts()[0],req={scopes:M365.scopes};
-  if(cuenta){try{return (await PCA.acquireTokenSilent(Object.assign({account:cuenta},req))).accessToken;}catch(e){}}
-  if(!interactivo){try{return (await PCA.ssoSilent(Object.assign({domainHint:'organizations'},req))).accessToken;}catch(e){return null;}}
-  var r=await PCA.loginPopup(req);PCA.setActiveAccount(r.account);
-  return (await PCA.acquireTokenSilent(Object.assign({account:r.account},req))).accessToken;
-}
-async function leerRegistroM365(interactivo){
-  setPaso(2,'wait','Leyendo el registro del formulario…');
-  var tk;try{tk=await tokenM365(interactivo);}catch(e){modoManual('No se pudo iniciar sesión en Microsoft 365 ('+(e.errorCode||e.message)+').');return;}
-  if(!tk){el('btnM365').innerHTML='🔑 Conectar con Microsoft 365';pend('','Conéctate con tu cuenta ICV (botón de arriba) para leer el registro del formulario automáticamente.');return;}
-  var url='https://graph.microsoft.com/v1.0/sites/'+M365.sitio+':/lists/'+M365.lista+'/items?$top=999&expand=fields(select=Title,FechaHora,RUT,Conductor,Apto,RevisionTurno,Falla)',items=[];
-  try{
-    while(url){var res=await fetch(url,{headers:{Authorization:'Bearer '+tk}});
-      if(!res.ok)throw new Error('HTTP '+res.status);var j=await res.json();items=items.concat(j.value||[]);url=j['@odata.nextLink']||null;}
-  }catch(e){modoManual('No se pudo leer el registro del formulario ('+e.message+').');return;}
-  var z=function(n){return(n<10?'0':'')+n;};
-  var filas=[['Hora de finalización','Patente','RUT Conductor','Nombre Conductor','Declaración del conductor','¿Esta camioneta ya tiene la revisión completa hecha en este turno?','¿Hay alguna falla, daño o faltante en la camioneta?']];
-  items.forEach(function(it){var f=it.fields||{};if(!f.FechaHora)return;
-    if(/prueba/i.test(f.Conductor||'')||normRut(f.RUT)==='11111111-1')return; // respuestas de prueba
-    var d=new Date(f.FechaHora);
-    filas.push([d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds()),f.Title||'',f.RUT||'',f.Conductor||'',f.Apto||'',f.RevisionTurno||'',f.Falla||'']);});
-  if(filas.length<2){CK=[];CKINFO=null;pend('','El registro del formulario todavía no tiene respuestas.');render();return;}
-  var r=procesarChecklist(filas,'Registro del formulario (automático)');
-  if(r.err){modoManual(r.err);return;}
-  CKPEND=null;CK=r.ck;CKINFO=r.info;render();
-}
-if(M365.clientId&&typeof msal!=='undefined'){
-  el('btnCk').style.display='none';el('btnM365').style.display='';
-  el('ckDesc').innerHTML='Se lee <b>automáticamente</b> del registro del formulario pre-uso (cada envío queda guardado en SharePoint). Solo debes cargar el reporte de Salfa en el paso 1.';
-  el('btnM365').onclick=function(){leerRegistroM365(true);};
-  leerRegistroM365(false);
-}
 
 function hhmm(f){return (f||'').slice(11,16);}
 function cmpT(a,b){return (a._t-b._t)||(a._ix-b._ix);}
