@@ -91,8 +91,9 @@
   .scrollbody{max-height:300px;overflow:auto}
   .empty{padding:26px;text-align:center;color:var(--muted);font-size:13px}
   .foot{color:var(--muted);font-size:11.5px;padding:14px 4px;line-height:1.5}
-  .credit{margin:4px 0 18px;padding:12px 16px;border-top:1px solid var(--line);text-align:center;font-size:12.5px;color:var(--muted)}
-  .credit b{color:var(--navy)}
+  .credit{margin:8px 0 18px;padding:14px 18px;background:var(--navy);border-radius:12px;text-align:center;font-size:13.5px;color:#dbe4f0;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+  .credit b{color:#fff}
+  .credit .bar{width:4px;height:18px;border-radius:2px;background:#d62b2b}
   .note{background:#fffaf0;border:1px solid #f2e2c4;border-radius:10px;padding:11px 14px;font-size:12.5px;color:#7a5a10;margin-bottom:14px;line-height:1.5}
   #file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
   .b{user-select:none}
@@ -226,7 +227,7 @@
   <div class="foot">
     Las posiciones GPS se registran cada ~8 s; un tramo continuo del mismo móvil sobre el límite cuenta como <b>un episodio</b>, no una infracción por punto. Clasificación faena/ruta por el polígono de faena (ray casting). El polígono queda guardado en este navegador. Fuente: plataforma MiGPS &mdash; Reporte Velocidad sobre la Máxima.
   </div>
-  <div class="credit">Realizado por <b>Javier Madrid V.</b> · Depto. de Prevención de Riesgos ICV-DMH</div>
+  <div class="credit"><span class="bar"></span><span>Realizado por <b>Javier Madrid V.</b> · Depto. de Prevención de Riesgos ICV-DMH</span></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -756,6 +757,7 @@ function construirXLS(){
      thX('Latitud','rowspan="2" ')+thX('Longitud','rowspan="2" ')+thX('Grupo 1','rowspan="2" ')+thX('Grupo 2','rowspan="2" ')+thX('Grupo 3','rowspan="2" ')+thX('Grupo 4','rowspan="2" ')+thX('Ver en Mapa','rowspan="2" ')+'  </tr>\r\n';
   s+='  <tr bgcolor="#95B3D7">\r\n'+thX('Rut','')+thX('Nombre','')+'  </tr>\r\n';
   exc.forEach(function(p){s+=filaX(p);});
+  s+='  <tr style="border: 0px"><td>   </td></tr>\r\n  <tr>\r\n      <td colspan="8" align="left" style="font-size:11pt; font-style:italic">Realizado por Javier Madrid V. · Depto. de Prevención de Riesgos ICV-DMH</td>\r\n  </tr>\r\n';
   s+='</table>\r\n';
   var u8=new Uint8Array(s.length);for(var i=0;i<s.length;i++){var k=s.charCodeAt(i);u8[i]=k<256?k:63;}
   return {bytes:u8,n:exc.length};
