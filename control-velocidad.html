@@ -757,7 +757,6 @@ function construirXLS(){
      thX('Latitud','rowspan="2" ')+thX('Longitud','rowspan="2" ')+thX('Grupo 1','rowspan="2" ')+thX('Grupo 2','rowspan="2" ')+thX('Grupo 3','rowspan="2" ')+thX('Grupo 4','rowspan="2" ')+thX('Ver en Mapa','rowspan="2" ')+'  </tr>\r\n';
   s+='  <tr bgcolor="#95B3D7">\r\n'+thX('Rut','')+thX('Nombre','')+'  </tr>\r\n';
   exc.forEach(function(p){s+=filaX(p);});
-  s+='  <tr style="border: 0px"><td>   </td></tr>\r\n  <tr>\r\n      <td colspan="8" align="left" style="font-size:11pt; font-style:italic">Realizado por Javier Madrid V. · Depto. de Prevención de Riesgos ICV-DMH</td>\r\n  </tr>\r\n';
   s+='</table>\r\n';
   var u8=new Uint8Array(s.length);for(var i=0;i<s.length;i++){var k=s.charCodeAt(i);u8[i]=k<256?k:63;}
   return {bytes:u8,n:exc.length};
