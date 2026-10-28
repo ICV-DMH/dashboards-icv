@@ -378,7 +378,7 @@ function normRut(v){var s=String(v||'').toUpperCase().replace(/[^0-9K]/g,'');if(
 function procesarChecklist(text,nombre){
   var rows=Array.isArray(text)?text:parseCSV(String(text).replace(/^﻿/,''));if(!rows.length)return {err:'El archivo está vacío.'};
   var hd=rows[0].map(sinAcento),ix=function(n){return hd.indexOf(n);};
-  var iM=[ 'marca temporal','fecha y hora','hora de finalizacion','completion time','hora de inicio','start time'].map(ix).filter(function(i){return i>=0;})[0];if(iM===undefined)iM=-1;var iN=ix('nombre conductor');if(iN<0)iN=ix('conductor');var iP=ix('patente'),iI=ix('numero interno'),iF=ix('fecha'),iR=hd.findIndex(function(x){return x.indexOf('rut')===0;});
+  var iM=[ 'marca temporal','fecha y hora','hora de finalizacion','completion time','hora de inicio','start time'].map(ix).filter(function(i){return i>=0;})[0];if(iM===undefined)iM=-1;var iN=ix('nombre conductor');if(iN<0)iN=ix('nombre del conductor');if(iN<0)iN=ix('conductor');var iP=ix('patente'),iI=ix('numero interno'),iF=ix('fecha'),iR=hd.findIndex(function(x){return x.indexOf('rut')===0;});
   var iH=hd.findIndex(function(x){return x.indexOf('hora')===0;});if(iH<0&&iF>=0&&(hd[iF+1]===''||/^pregunta/.test(hd[iF+1]||'')))iH=iF+1;
   if(iN<0||iP<0||(iF<0&&iM<0))return {err:'No parece el checklist de pre-uso: faltan las columnas “Nombre Conductor”, “Patente” o “Fecha”.'};
   var ixRev=[];hd.forEach(function(x,i){if(/^revision del turno.*\[/.test(x))ixRev.push(i);});
