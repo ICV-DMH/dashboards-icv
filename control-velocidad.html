@@ -592,7 +592,7 @@ function xlsEjecutivo(nombre,hojas){return cargarExcelJS().then(function(EJ){
     var r=5,freezeAt=null;
     h.blocks.forEach(function(b,bi){
       if(b.title){band(r,b.title,XC.gris,10,20,true);r++;}
-      if(b.type==='img'){var nr=Math.ceil(b.h/20)+1;for(var k=0;k<nr;k++)ws.getRow(r+k).height=15;ws.addImage(wb.addImage({base64:b.base64,extension:'png'}),{tl:{col:0.1,row:r-1+0.1},ext:{width:b.w,height:b.h}});r+=nr+1;return;}
+      if(b.type==='img'){var nr=Math.ceil(b.h/20)+1;for(var k=0;k<nr;k++)ws.getRow(r+k).height=15;ws.addImage(wb.addImage({base64:b.base64,extension:b.ext||'jpeg'}),{tl:{col:0.1,row:r-1+0.1},ext:{width:b.w,height:b.h}});r+=nr+1;return;}
       if(b.type==='note'){ws.mergeCells(r,1,r,nc);var c=ws.getCell(r,1);c.value=b.text;c.font=F({size:9,italic:true,color:{argb:XC.osc}});c.alignment={wrapText:true,vertical:'top',horizontal:'left'};c.border=BORD;ws.getRow(r).height=Math.max(16,Math.ceil(String(b.text).length/(tw*1.05))*13+4);r+=2;return;}
       var head=b.head||['Indicador','Valor'],hr=r,row=ws.getRow(r),ancho=(b.type==='kv'&&head.length===2&&nc>2);
       head.forEach(function(t,i){var c=row.getCell(i+1);c.value=t;c.font=F({size:9,bold:true,color:{argb:'FFFFFFFF'}});c.fill=fill(b.headColor||XC.osc);c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=BORD;});
@@ -702,7 +702,7 @@ function mapaEpisodio(e){
     var ley=[['#d62b2b','Sobre el límite'],['#2e9d4a','Dentro del límite'],['#ff8c1a','Perímetro faena']];g.font='12px Calibri, Segoe UI, Arial';var lx=10,ly=H-12;
     g.fillStyle='rgba(255,255,255,.88)';g.fillRect(0,H-26,W,26);ley.forEach(function(l){g.fillStyle=l[0];g.beginPath();g.arc(lx+5,ly-4,5,0,7);g.fill();g.fillStyle='#222';g.fillText(l[1],lx+14,ly);lx+=g.measureText(l[1]).width+34;});
     g.fillStyle='#555';g.fillText('Imagery © Esri',W-92,ly);
-    return cv.toDataURL('image/png').split(',')[1];});
+    return cv.toDataURL('image/jpeg',0.86).split(',')[1];});
 }
 function hojaMapas(epis,sub){
   var lista=epis.slice(0,MAPA_MAX),blocks=[],fallas=0,okc=function(c){return c&&(c.st==='ok'||c.st==='prob');};
