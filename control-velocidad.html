@@ -151,7 +151,7 @@
       <div class="stbody">
         <div class="sttit">Checklist pre-uso · conductores</div>
         <div class="stdesc" id="ckDesc">Cada envío del formulario pre-uso queda guardado solo en la lista <b>Registro Pre-Uso Camionetas</b>. Ábrela, presiona <b>Exportar → Exportar a CSV</b> y carga ese archivo (o arrástralo junto con el de Salfa). También acepta el Excel de Forms o el .csv/.zip del formulario anterior de Google.</div>
-        <div class="btns"><a class="b" id="btnLista" href="https://ingenieriacivilvicentesa.sharepoint.com/sites/gestinssoicv-dmh/Lists/RegistroPreUsoCamionetas/AllItems.aspx" target="_blank" rel="noopener">↗ Abrir registro</a><label class="b primary" id="btnCk" for="file2" tabindex="0">⬆ Cargar registro (.csv)</label><button class="b warn" id="btnCkReset" title="Quitar el checklist cargado">✕ Quitar</button></div>
+        <div class="btns"><a class="b" id="btnLista" href="https://ingenieriacivilvicentesa.sharepoint.com/sites/gestinssoicv-dmh/Lists/RegistroPreUsoCamionetas/AllItems.aspx" target="_blank" rel="noopener">↗ Abrir registro</a><label class="b primary" id="btnCk" for="file2" tabindex="0">⬆ Cargar registro (.csv)</label><button class="b warn" id="btnCkReset" title="Quitar el checklist cargado">✕ Quitar</button><button class="b" id="btnCkRes" title="Descarga un Excel con el resumen de los checklist cargados: por conductor, por camioneta, por día y el detalle">⤓ Resumen checklist (.xlsx)</button></div>
         <div class="ststat" id="st2">Pendiente</div>
       </div>
     </div>
@@ -186,6 +186,7 @@
       <label>Informe</label>
       <div class="btns">
         <button class="b" id="btnCsv" title="Descarga un .xls con el mismo formato del reporte de Salfa, solo con los excesos">⤓ Exportar excesos (.xls)</button>
+        <button class="b" id="btnCkRes2" title="Descarga un Excel con el resumen de los checklist cargados">⤓ Resumen checklist (.xlsx)</button>
       </div>
     </div>
     <input type="file" id="file" accept=".xls,.xlsx,.html,.htm" multiple>
@@ -482,6 +483,70 @@ function actualizarPasos(epis){
 el('file2').addEventListener('change',function(ev){cargarChecklist(ev.target.files[0]);ev.target.value='';});
 el('btnCk').addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();el('file2').click();}});
 el('btnCkReset').onclick=function(){CK=[];CKINFO=null;render();};
+/* ===== Resumen descargable de los checklist pre-uso ===== */
+function resumenChecklist(){
+  if(!CK.length){msg('Primero carga el registro de checklist en el paso 2: presiona <b>Abrir registro</b>, exporta la lista a CSV y cárgala aquí. Luego descarga el resumen.','err');return;}
+  if(typeof XLSX==='undefined'){msg('No se pudo cargar el generador de Excel (revisa la conexión a internet).','err');return;}
+  var z=function(n){return(n<10?'0':'')+n;};
+  var dkey=function(t){var d=new Date(t);return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());};
+  var dfmt=function(k){return k.slice(8,10)+'-'+k.slice(5,7)+'-'+k.slice(0,4);};
+  var hm=function(t){var d=new Date(t);return z(d.getHours())+':'+z(d.getMinutes());};
+  var fts=function(t){return dfmt(dkey(t))+' '+hm(t);};
+  var dias=[],d0=new Date(CK[0].t),d1=new Date(CK[CK.length-1].t);d0.setHours(12,0,0,0);d1.setHours(12,0,0,0);
+  for(var d=new Date(d0);d<=d1;d.setDate(d.getDate()+1))dias.push(dkey(d.getTime()));
+  var nD=dias.length,rf=CK.some(function(k){return k.falla!==undefined;});
+  var C={},P={},D={};dias.forEach(function(k){D[k]={n:0,c:{},p:{},f:0,na:0};});
+  CK.forEach(function(k){var dk=dkey(k.t),key=k.rut||k.cond.toLowerCase();
+    var c=C[key]=C[key]||{nom:{},rut:k.rut,n:0,d:{},p:{},f:0,na:0,ini:k.t,fin:k.t};
+    c.nom[k.cond]=(c.nom[k.cond]||0)+1;c.n++;c.d[dk]=1;c.p[k.pat]=1;if(k.falla)c.f++;if(k.noApto)c.na++;if(k.t<c.ini)c.ini=k.t;if(k.t>c.fin)c.fin=k.t;
+    var p=P[k.pat]=P[k.pat]||{n:0,d:{},c:{},f:0,fin:k.t};p.n++;p.d[dk]=1;p.c[key]=1;if(k.falla)p.f++;if(k.t>p.fin)p.fin=k.t;
+    var dd=D[dk];if(dd){dd.n++;dd.c[key]=1;dd.p[k.pat]=1;if(k.falla)dd.f++;if(k.noApto)dd.na++;}});
+  var cat=function(pc){return pc>=0.999?'Diario':pc>=0.7?'Casi diario':pc>=0.4?'Algunos días':'Ocasional';};
+  var conds=Object.keys(C).map(function(k){var c=C[k];var nm=Object.keys(c.nom).sort(function(a,b){return c.nom[b]-c.nom[a];})[0];var nd=Object.keys(c.d).length;
+    return {nm:nm,rut:c.rut,n:c.n,nd:nd,pc:nd/nD,pats:Object.keys(c.p).sort().join(', '),f:c.f,na:c.na,ini:c.ini,fin:c.fin};})
+    .sort(function(a,b){return b.nd-a.nd||b.n-a.n||a.nm.localeCompare(b.nm);});
+  var nF=CK.filter(function(k){return k.falla;}).length,nNA=CK.filter(function(k){return k.noApto;}).length;
+  var cats=['Diario','Casi diario','Algunos días','Ocasional'],cc={};cats.forEach(function(x){cc[x]=0;});conds.forEach(function(c){cc[cat(c.pc)]++;});
+  var tit='Resumen checklist pre-uso camionetas · ICV DMH';
+  var res=[[tit],['Período',dfmt(dias[0])+' al '+dfmt(dias[nD-1])+' ('+nD+' día'+(nD>1?'s':'')+')'],['Archivo cargado',(CKINFO&&CKINFO.archivo)||''],['Generado el',fts(Date.now())],[],
+    ['Indicador','Valor'],['Checklists realizados',CK.length],['Conductores distintos',conds.length],['Camionetas con checklist',Object.keys(P).length+' de '+FLOTA.length],
+    ['Promedio de checklists por día',Math.round(CK.length/nD*10)/10]];
+  if(rf){res.push(['Checklists con fallas reportadas',nF]);res.push(['Declaraciones "No estoy apto"',nNA]);}
+  res.push([]);res.push(['Frecuencia del personal','Conductores','% del personal']);
+  var rFreq=res.length;cats.forEach(function(x){res.push([x,cc[x],conds.length?cc[x]/conds.length:0]);});
+  res.push([]);res.push(['Criterio','% de días = días con al menos un checklist ÷ días del período. Diario = 100 %; Casi diario ≥ 70 %; Algunos días ≥ 40 %; Ocasional < 40 %. No considera turnos ni días libres.']);
+  var wsR=XLSX.utils.aoa_to_sheet(res);for(var i=0;i<cats.length;i++){var a=XLSX.utils.encode_cell({r:rFreq+i,c:2});if(wsR[a])wsR[a].z='0%';}
+  wsR['!cols']=[{wch:34},{wch:44},{wch:16}];
+  var hC=['#','Nombre y apellido','RUT','Checklists','Días con checklist','% de días del período','Frecuencia','Camionetas'].concat(rf?['Con fallas','No apto']:[]).concat(['Primer registro','Último registro']);
+  var aC=[hC].concat(conds.map(function(c,i){return [i+1,c.nm,c.rut||'',c.n,c.nd,c.pc,cat(c.pc),c.pats].concat(rf?[c.f,c.na]:[]).concat([fts(c.ini),fts(c.fin)]);}));
+  var wsC=XLSX.utils.aoa_to_sheet(aC);for(var r=1;r<aC.length;r++){var a2=XLSX.utils.encode_cell({r:r,c:5});wsC[a2].z='0%';}
+  wsC['!cols']=[{wch:4},{wch:34},{wch:12},{wch:11},{wch:10},{wch:12},{wch:13},{wch:30}].concat(rf?[{wch:10},{wch:9}]:[]).concat([{wch:17},{wch:17}]);
+  wsC['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aC.length-1,c:hC.length-1}})};
+  var pats=FLOTA.slice();Object.keys(P).forEach(function(p){if(pats.indexOf(p)<0)pats.push(p);});
+  var hP=['Patente','Checklists','Días con checklist','% de días del período','Conductores distintos'].concat(rf?['Con fallas']:[]).concat(['Último registro']);
+  var aP=[hP].concat(pats.map(function(p){var o=P[p];var nd=o?Object.keys(o.d).length:0;return [p,o?o.n:0,nd,nd/nD,o?Object.keys(o.c).length:0].concat(rf?[o?o.f:0]:[]).concat([o?fts(o.fin):'Sin checklist']);})
+    .sort(function(a,b){return b[1]-a[1]||String(a[0]).localeCompare(b[0]);}));
+  var wsP=XLSX.utils.aoa_to_sheet(aP);for(r=1;r<aP.length;r++)wsP[XLSX.utils.encode_cell({r:r,c:3})].z='0%';
+  wsP['!cols']=[{wch:11},{wch:11},{wch:10},{wch:12},{wch:12}].concat(rf?[{wch:10}]:[]).concat([{wch:17}]);
+  var hD=['Fecha','Checklists','Conductores','Camionetas','% de la flota'].concat(rf?['Con fallas','No apto']:[]);
+  var aD=[hD].concat(dias.map(function(k){var o=D[k];var np=Object.keys(o.p).length;return [dfmt(k),o.n,Object.keys(o.c).length,np,np/FLOTA.length].concat(rf?[o.f,o.na]:[]);}));
+  var wsD=XLSX.utils.aoa_to_sheet(aD);for(r=1;r<aD.length;r++)wsD[XLSX.utils.encode_cell({r:r,c:4})].z='0%';
+  wsD['!cols']=[{wch:12},{wch:11},{wch:12},{wch:11},{wch:12}].concat(rf?[{wch:10},{wch:9}]:[]);
+  var hX=['Fecha','Hora','Patente','Conductor','RUT'].concat(rf?['Apto','Falla reportada']:[]);
+  var aX=[hX].concat(CK.map(function(k){return [dfmt(dkey(k.t)),hm(k.t),k.pat,k.cond,k.rut||''].concat(rf?[k.noApto?'No':'Sí',k.falla?'Sí':'No']:[]);}));
+  var wsX=XLSX.utils.aoa_to_sheet(aX);wsX['!cols']=[{wch:12},{wch:7},{wch:10},{wch:34},{wch:12}].concat(rf?[{wch:7},{wch:14}]:[]);
+  wsX['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aX.length-1,c:hX.length-1}})};
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,wsR,'Resumen');XLSX.utils.book_append_sheet(wb,wsC,'Por conductor');XLSX.utils.book_append_sheet(wb,wsP,'Por camioneta');
+  XLSX.utils.book_append_sheet(wb,wsD,'Por día');XLSX.utils.book_append_sheet(wb,wsX,'Detalle');
+  var nombre='Resumen_Checklist_PreUso_'+dfmt(dias[0])+'_al_'+dfmt(dias[nD-1])+'.xlsx';
+  var out=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  var a3=document.createElement('a');a3.href=URL.createObjectURL(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a3.download=nombre;
+  document.body.appendChild(a3);a3.click();setTimeout(function(){URL.revokeObjectURL(a3.href);a3.remove();},1500);
+  msg('Resumen descargado: <b>'+nombre+'</b> · '+CK.length+' checklists, '+conds.length+' conductores, '+nD+' días.','ok');
+}
+el('btnCkRes').onclick=resumenChecklist;el('btnCkRes2').onclick=resumenChecklist;
+
 
 
 function hhmm(f){return (f||'').slice(11,16);}
