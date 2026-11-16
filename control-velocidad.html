@@ -411,16 +411,19 @@ el('btnDetXls').onclick=function(){
   var rows=DET.rows;if(!rows.length){msg('No hay registros para exportar con este filtro. Carga primero el reporte de MiGPS (paso 1).','err');return;}
   var okc=function(c){return c&&(c.st==='ok'||c.st==='prob');};
   var data=rows.map(function(p){var c=condPunto(p);var f=String(p.fecha).split(' ');
-    return [f[0],f[1]||'',p.patente,p.kmh,p._lim,p._dentro?'Faena':'Ruta',p._exc?'Exceso':'Dentro del límite',p._exc?p.kmh-p._lim:'',okc(c)?c.cond:'',okc(c)?(c.rut||''):'',!c?'Checklist no cargado':c.st==='ok'?'Checklist previo ('+horasTxt(c.h)+' antes)':c.st==='prob'?'Probable (checklist '+horasTxt(c.h)+' después)':'Sin checklist',okc(c)?fmtCk(c.t):'',p.lat,p.lon,p.ubic||''];});
+    return [f[0],f[1]||'',p.patente,p.kmh,p._lim,p._dentro?'Faena':'Ruta',p._exc?'Exceso':'Dentro del límite',p._exc?p.kmh-p._lim:'',okc(c)?c.cond:'',okc(c)?(c.rut||''):'',!c?'Checklist no cargado':c.st==='ok'?'Checklist previo ('+horasTxt(c.h)+' antes)':c.st==='prob'?'Probable (checklist '+horasTxt(c.h)+' después)':'Sin checklist',okc(c)?fmtCk(c.t):'',p.lat,p.lon,p.ubic||'',p._exc?linkMapa(p):''];});
   var d0=String(rows[0].fecha).split(' ')[0],d1=String(rows[rows.length-1].fecha).split(' ')[0];
   var nEx=rows.filter(function(p){return p._exc;}).length;
   var hojas=[{name:DET.exc?'Solo excesos':'Todas las velocidades',title:(DET.exc?'REGISTROS SOBRE EL LÍMITE DE VELOCIDAD':'DETALLE DE VELOCIDADES · CON Y SIN EXCESO')+(DET.pat?' · '+DET.pat:''),
     sub:subICV('MiGPS × checklist pre-uso · '+d0+(d1!==d0?' al '+d1:'')+' · '+rows.length+' registros · '+nEx+' sobre el límite'),
-    widths:[12,8,11,8,8,8,17,10,32,13,28,13,12,12,52],
-    blocks:[{type:'table',filter:true,left:[8,10,14],head:['Fecha','Hora','Patente','Km/h','Límite','Zona','Estado','Km/h sobre el límite','Conductor','RUT','Origen del conductor','Hora checklist','Latitud','Longitud','Ubicación'],
+    widths:[12,8,11,8,8,8,17,10,32,13,28,13,12,12,52,18],
+    blocks:[{type:'table',filter:true,left:[8,10,14],head:['Fecha','Hora','Patente','Km/h','Límite','Zona','Estado','Km/h sobre el límite','Conductor','RUT','Origen del conductor','Hora checklist','Latitud','Longitud','Ubicación','Mapa'],
       rows:data,flag:function(d){return d[6]==='Exceso';},flagCol:6,redCols:[3,7],mutedCol:10,fmt:{12:'0.000000',13:'0.000000'}}]}];
   var nombre='Detalle_Velocidades_'+(DET.exc?'Solo_Excesos':'Todas')+(DET.pat?'_'+DET.pat:'')+'_'+d0+(d1!==d0?'_al_'+d1:'')+'.xlsx';
-  guardarXlsx(nombre,hojas,'Detalle descargado: <b>'+nombre+'</b> · '+rows.length+' registros.');
+  var fin=function(){guardarXlsx(nombre,hojas,'Detalle descargado: <b>'+nombre+'</b> · '+rows.length+' registros.');};
+  var ep=EPIS.filter(function(e){return !DET.pat||e.patente===DET.pat;});
+  if(!DET.exc||!ep.length)return fin();
+  hojaMapas(ep,hojas[0].sub).then(function(h){if(h)hojas.push(h);fin();}).catch(fin);
 };
 
 /* ================= Checklist pre-uso: cruce de conductor ================= */
@@ -572,7 +575,7 @@ var LOGO_ICV='iVBORw0KGgoAAAANSUhEUgAAAJYAAACKCAMAAAB/y0MwAAAASFBMVEX///////7+//
 function cargarExcelJS(){return new Promise(function(ok,ko){if(window.ExcelJS)return ok(window.ExcelJS);var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';s.onload=function(){window.ExcelJS?ok(window.ExcelJS):ko(new Error('ExcelJS no disponible'));};s.onerror=function(){ko(new Error('No se pudo cargar ExcelJS'));};document.head.appendChild(s);});}
 var XC={rojo:'FFCD2017',gris:'FF58595B',osc:'FF404040',borde:'FFBFBFBF',rosa:'FFFBE4E2',rojoT:'FF9E1A13',grisT:'FF8A8A8A',suave:'FFF2F2F2',verdeT:'FF1E7E34'};
 function descargarBlob(buf,nombre){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=nombre;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);}
-function xlsPlano(nombre,hojas){var wb=XLSX.utils.book_new();hojas.forEach(function(h){var aoa=[[h.title],[h.sub],[]];h.blocks.forEach(function(b){if(b.title)aoa.push([b.title]);if(b.type==='note')aoa.push([b.text]);else{aoa.push(b.head||['Indicador','Valor']);b.rows.forEach(function(r){aoa.push(r);});}aoa.push([]);});
+function xlsPlano(nombre,hojas){var wb=XLSX.utils.book_new();hojas.forEach(function(h){var aoa=[[h.title],[h.sub],[]];h.blocks.forEach(function(b){if(b.type==='img')return;if(b.title)aoa.push([b.title]);if(b.type==='note')aoa.push([b.text]);else{aoa.push(b.head||['Indicador','Valor']);b.rows.forEach(function(r){aoa.push(r.map(function(v){return v&&typeof v==='object'&&v.hyperlink?v.hyperlink:v;}));});}aoa.push([]);});
   var ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=(h.widths||[]).map(function(w){return {wch:w};});XLSX.utils.book_append_sheet(wb,ws,h.name.slice(0,31));});descargarBlob(XLSX.write(wb,{bookType:'xlsx',type:'array'}),nombre);}
 function xlsEjecutivo(nombre,hojas){return cargarExcelJS().then(function(EJ){
   var wb=new EJ.Workbook();wb.creator='ICV DMH';wb.created=new Date();var logo=wb.addImage({base64:LOGO_ICV,extension:'png'});
@@ -589,6 +592,7 @@ function xlsEjecutivo(nombre,hojas){return cargarExcelJS().then(function(EJ){
     var r=5,freezeAt=null;
     h.blocks.forEach(function(b,bi){
       if(b.title){band(r,b.title,XC.gris,10,20,true);r++;}
+      if(b.type==='img'){var nr=Math.ceil(b.h/20)+1;for(var k=0;k<nr;k++)ws.getRow(r+k).height=15;ws.addImage(wb.addImage({base64:b.base64,extension:'png'}),{tl:{col:0.1,row:r-1+0.1},ext:{width:b.w,height:b.h}});r+=nr+1;return;}
       if(b.type==='note'){ws.mergeCells(r,1,r,nc);var c=ws.getCell(r,1);c.value=b.text;c.font=F({size:9,italic:true,color:{argb:XC.osc}});c.alignment={wrapText:true,vertical:'top',horizontal:'left'};c.border=BORD;ws.getRow(r).height=Math.max(16,Math.ceil(String(b.text).length/(tw*1.05))*13+4);r+=2;return;}
       var head=b.head||['Indicador','Valor'],hr=r,row=ws.getRow(r),ancho=(b.type==='kv'&&head.length===2&&nc>2);
       head.forEach(function(t,i){var c=row.getCell(i+1);c.value=t;c.font=F({size:9,bold:true,color:{argb:'FFFFFFFF'}});c.fill=fill(b.headColor||XC.osc);c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=BORD;});
@@ -603,6 +607,7 @@ function xlsEjecutivo(nombre,hojas){return cargarExcelJS().then(function(EJ){
           if(flag&&b.redCols&&b.redCols.indexOf(i)>=0)c.font=F({bold:true,color:{argb:XC.rojoT}});
           if(b.mutedCol===i&&/^Sin checklist|^Checklist no cargado/.test(String(v)))c.font=F({italic:true,color:{argb:XC.rojoT}});
           if(hi){c.fill=fill(i===0?XC.rojo:XC.suave);c.font=F({bold:true,color:{argb:i===0?'FFFFFFFF':'FF000000'}});}
+          if(v&&typeof v==='object'&&v.hyperlink)c.font=F({color:{argb:'FF0563C1'},underline:true});
         }if(ancho)ws.mergeCells(r,2,r,nc);row.height=b.rowH||18;r++;});
       if(b.filter&&b.rows.length)ws.autoFilter={from:{row:hr,column:1},to:{row:r-1,column:head.length}};
       r++;});
@@ -664,6 +669,55 @@ function resumenChecklist(){
   guardarXlsx(nombre,hojas,'Resumen descargado: <b>'+nombre+'</b> · '+CK.length+' checklists, '+conds.length+' conductores, '+nD+' días.');
 }
 el('btnCkRes').onclick=resumenChecklist;el('btnCkRes2').onclick=resumenChecklist;
+
+/* ===== Imagen del mapa para cada episodio de exceso (Excel) ===== */
+var MAPA_MAX=40,MAPA_W=640,MAPA_H=380;
+function gmaps(lat,lon){return 'https://www.google.com/maps/search/?api=1&query='+lat.toFixed(6)+','+lon.toFixed(6);}
+function linkMapa(p){return {text:'Ver en Google Maps',hyperlink:gmaps(p.lat,p.lon)};}
+function cargarTile(u){return new Promise(function(ok){var i=new Image();i.crossOrigin='anonymous';i.onload=function(){ok(i);};i.onerror=function(){ok(null);};i.src=u;});}
+function mapaEpisodio(e){
+  var W=MAPA_W,H=MAPA_H,s=e.pts.slice().sort(cmpT),t0=s[0]._t,t1=s[s.length-1]._t;
+  var ctx=(PORPAT[e.patente]||s).filter(function(p){return p._t>=t0-6*60000&&p._t<=t1+6*60000;});if(!ctx.length)ctx=s;
+  var lats=ctx.map(function(p){return p.lat;}),lons=ctx.map(function(p){return p.lon;});
+  var la0=Math.min.apply(null,lats),la1=Math.max.apply(null,lats),lo0=Math.min.apply(null,lons),lo1=Math.max.apply(null,lons);
+  var px=function(lat,lon,z){var n=256*Math.pow(2,z),r=lat*Math.PI/180;return [(lon+180)/360*n,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n];};
+  var z=17;while(z>12){var a=px(la1,lo0,z),b=px(la0,lo1,z);if(b[0]-a[0]<W-140&&b[1]-a[1]<H-110)break;z--;}
+  var pk=e.peor,cA=px((la0+la1)/2,(lo0+lo1)/2,z),cx=cA[0],cy=cA[1],ox=cx-W/2,oy=cy-H/2;
+  var cv=document.createElement('canvas');cv.width=W;cv.height=H;var g=cv.getContext('2d');g.fillStyle='#d9d4c7';g.fillRect(0,0,W,H);
+  var jobs=[];for(var tx=Math.floor(ox/256);tx<=Math.floor((ox+W)/256);tx++)for(var ty=Math.floor(oy/256);ty<=Math.floor((oy+H)/256);ty++)(function(tx,ty){
+    jobs.push(cargarTile('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+ty+'/'+tx).then(function(im){return {im:im,x:tx*256-ox,y:ty*256-oy,o:0};}));
+    jobs.push(cargarTile('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/'+z+'/'+ty+'/'+tx).then(function(im){return {im:im,x:tx*256-ox,y:ty*256-oy,o:1};}));})(tx,ty);
+  return Promise.all(jobs).then(function(ts){
+    var ok=ts.filter(function(t){return t.im&&t.o===0;}).length;if(!ok)throw new Error('sin imágenes del mapa');
+    ts.sort(function(a,b){return a.o-b.o;}).forEach(function(t){if(t.im)g.drawImage(t.im,t.x,t.y);});
+    var P=function(p){var q=px(p.lat,p.lon,z);return [q[0]-ox,q[1]-oy];};
+    var poly=currentPolyLL();if(poly&&poly.length>2){g.beginPath();poly.forEach(function(v,i){var q=px(v[0],v[1],z);i?g.lineTo(q[0]-ox,q[1]-oy):g.moveTo(q[0]-ox,q[1]-oy);});g.closePath();g.setLineDash([8,6]);g.lineWidth=2.5;g.strokeStyle='#ff8c1a';g.stroke();g.setLineDash([]);}
+    g.lineWidth=3;g.strokeStyle='rgba(255,255,255,.85)';g.beginPath();ctx.forEach(function(p,i){var q=P(p);i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]);});g.stroke();
+    ctx.forEach(function(p){var q=P(p);g.beginPath();g.arc(q[0],q[1],p._exc?6:4.5,0,7);g.fillStyle=p._exc?'#d62b2b':'#2e9d4a';g.fill();g.lineWidth=1.5;g.strokeStyle='#fff';g.stroke();});
+    var q=P(pk);g.beginPath();g.arc(q[0],q[1],13,0,7);g.lineWidth=4;g.strokeStyle='#ffd400';g.stroke();g.beginPath();g.arc(q[0],q[1],8,0,7);g.fillStyle='#c8102e';g.fill();g.lineWidth=2;g.strokeStyle='#fff';g.stroke();
+    var txt=pk.kmh+' km/h · límite '+pk._lim+' · '+String(pk.fecha).split(' ')[1];g.font='bold 15px Calibri, Segoe UI, Arial';var tw=g.measureText(txt).width+18;
+    var bx=Math.min(Math.max(q[0]+16,6),W-tw-6),by=Math.min(Math.max(q[1]-34,6),H-34);
+    g.fillStyle='#c8102e';g.fillRect(bx,by,tw,26);g.fillStyle='#fff';g.fillText(txt,bx+9,by+18);
+    g.fillStyle='rgba(11,36,71,.85)';g.fillRect(0,0,W,28);g.fillStyle='#fff';g.font='bold 14px Calibri, Segoe UI, Arial';g.fillText(e.patente+' · '+(e.dentro?'Faena':'Ruta')+' · '+s[0].fecha,10,19);
+    var ley=[['#d62b2b','Sobre el límite'],['#2e9d4a','Dentro del límite'],['#ff8c1a','Perímetro faena']];g.font='12px Calibri, Segoe UI, Arial';var lx=10,ly=H-12;
+    g.fillStyle='rgba(255,255,255,.88)';g.fillRect(0,H-26,W,26);ley.forEach(function(l){g.fillStyle=l[0];g.beginPath();g.arc(lx+5,ly-4,5,0,7);g.fill();g.fillStyle='#222';g.fillText(l[1],lx+14,ly);lx+=g.measureText(l[1]).width+34;});
+    g.fillStyle='#555';g.fillText('Imagery © Esri',W-92,ly);
+    return cv.toDataURL('image/png').split(',')[1];});
+}
+function hojaMapas(epis,sub){
+  var lista=epis.slice(0,MAPA_MAX),blocks=[],fallas=0,okc=function(c){return c&&(c.st==='ok'||c.st==='prob');};
+  var cadena=Promise.resolve();
+  lista.forEach(function(e,i){cadena=cadena.then(function(){msg('Generando mapa '+(i+1)+' de '+lista.length+'…','wait');return mapaEpisodio(e).then(function(b64){
+      var c=e.cond,s=e.pts.slice().sort(cmpT);
+      blocks.push({type:'kv',title:'EPISODIO '+(i+1)+' · '+e.patente+' · '+s[0].fecha+' · '+e.vmax+' km/h (límite '+e.peor._lim+', '+(e.dentro?'faena':'ruta')+')',head:['Dato','Detalle'],
+        rows:[['Conductor',okc(c)?c.cond+(c.rut?' · RUT '+c.rut:'')+(c.st==='prob'?' (probable)':''):(c?'Sin checklist':'Checklist no cargado')],['Exceso','+'+(e.vmax-e.peor._lim)+' km/h sobre el límite · '+e.pts.length+' registro'+(e.pts.length>1?'s':'')+' en exceso'],['Ubicación del peak',e.peor.ubic||''],['Coordenadas',e.peor.lat.toFixed(6)+', '+e.peor.lon.toFixed(6)],['Mapa en línea',linkMapa(e.peor)]]});
+      blocks.push({type:'img',base64:b64,w:MAPA_W,h:MAPA_H});
+    }).catch(function(){fallas++;});});});
+  return cadena.then(function(){
+    if(epis.length>MAPA_MAX)blocks.push({type:'note',title:'NOTA',text:'Se incluyen los mapas de los primeros '+MAPA_MAX+' episodios de '+epis.length+'. Filtra por camioneta en el tablero para obtener el resto.'});
+    if(fallas)blocks.push({type:'note',title:'NOTA',text:fallas+' mapa(s) no se pudieron generar (sin conexión a las imágenes satelitales). Usa el enlace a Google Maps de la hoja de excesos.'});
+    return blocks.length?{name:'Mapas de excesos',title:'MAPAS DE LOS EXCESOS DE VELOCIDAD',sub:sub,widths:[24,14,14,14,14,14],blocks:blocks}:null;});
+}
 /* ================= Tránsitos completos (con y sin exceso) ================= */
 var GAP_TRANSITO_MIN=15;
 function exportarTransitos(){
@@ -680,7 +734,7 @@ function exportarTransitos(){
     return [i+1,t.patente,t.ini.fecha,t.fin.fecha,Math.round((t.fin._t-t.ini._t)/60000),t.pts.length,nf===t.pts.length?'Faena':nf===0?'Ruta':'Faena y ruta',vm.kmh,ex.length?'SÍ':'NO',ex.length,ex.length?sob:'',
       okc(c)?c.cond:'',okc(c)?(c.rut||''):'',org(c),okc(c)?fmtCk(c.t):'',okc(c)?horasTxt(c.h):'',c&&c.otros&&c.otros.length?c.otros.join(', '):'',t.ini.ubic||'',t.fin.ubic||''];});
   var rowsE=EPIS.map(function(e,i){var c=e.cond;var s=e.pts.slice().sort(cmpT);return [i+1,e.patente,s[0].fecha,s[s.length-1].fecha,e.dentro?'Faena':'Ruta',e.peor._lim,e.vmax,e.vmax-e.peor._lim,e.pts.length,(e.sent&&e.sent.corto)||'',
-      okc(c)?c.cond:'',okc(c)?(c.rut||''):'',org(c),okc(c)?fmtCk(c.t):'',c&&c.otros&&c.otros.length?c.otros.join(', '):'',e.peor.ubic||''];});
+      okc(c)?c.cond:'',okc(c)?(c.rut||''):'',org(c),okc(c)?fmtCk(c.t):'',c&&c.otros&&c.otros.length?c.otros.join(', '):'',e.peor.ubic||'',linkMapa(e.peor)];});
   var all=PUNTOS.slice().sort(function(a,b){return a._t-b._t||(a.patente<b.patente?-1:1);});
   var rowsP=all.map(function(p){var c=condPunto(p);var f=String(p.fecha).split(' ');return [f[0],f[1]||'',p.patente,p.kmh,p._lim,p._dentro?'Faena':'Ruta',p._exc?'Exceso':'Dentro del límite',p._exc?p.kmh-p._lim:'',okc(c)?c.cond:'',okc(c)?(c.rut||''):'',p.lat,p.lon,p.ubic||''];});
   var conEx=rowsT.filter(function(r){return r[8]==='SÍ';}).length;
@@ -695,8 +749,8 @@ function exportarTransitos(){
       {type:'kv',title:'QUIÉN SOBREPASÓ LA VELOCIDAD',head:['Conductor','Episodios de exceso'],rows:Object.keys(quien).length?Object.keys(quien).sort(function(a,b){return quien[b]-quien[a];}).map(function(k){return [k,quien[k]];}):[['Sin excesos en el período',0]]},
       {type:'table',title:'POR CAMIONETA',head:['Patente','Tránsitos','Con exceso','Conductores (checklist)'],boldFirst:true,left:[3],wrap:[3],rows:Object.keys(pc).sort(function(a,b){return pc[b].e-pc[a].e||pc[b].n-pc[a].n;}).map(function(p){return [p,pc[p].n,pc[p].e,Object.keys(pc[p].c).sort().join(', ')||'Sin checklist'];}),flag:function(d){return d[2]>0;},redCols:[2]},
       {type:'note',title:'CRITERIOS',text:'Límite '+limF+' km/h dentro del perímetro de faena y '+limO+' km/h en ruta. Tránsito = registros seguidos de la misma camioneta con ≤ '+GAP_TRANSITO_MIN+' min entre uno y otro. Episodio de exceso = registros sobre el límite con ≤ '+el('gapMin').value+' min entre sí. Conductor = último checklist "apto" de esa patente en las '+VENTANA_H+' h previas; si no hay, el primero dentro de las '+POST_H+' h siguientes (probable). MiGPS solo entrega registros sobre el umbral pedido al exportar; lo que anduvo más lento no aparece.'}]},
-    {name:'Excesos de velocidad',title:'EXCESOS DE VELOCIDAD · EPISODIOS',sub:sub,widths:[5,11,17,17,8,8,9,10,9,15,30,13,25,13,28,48],blocks:[{type:'table',filter:true,left:[10,12,14,15],
-      head:['N°','Patente','Inicio','Fin','Zona','Límite','Vel. máx','Km/h sobre el límite','Registros','Sentido','Conductor','RUT','Origen del conductor','Hora checklist','Otros con checklist en la ventana','Ubicación del peak'],
+    {name:'Excesos de velocidad',title:'EXCESOS DE VELOCIDAD · EPISODIOS',sub:sub,widths:[5,11,17,17,8,8,9,10,9,15,30,13,25,13,28,48,18],blocks:[{type:'table',filter:true,left:[10,12,14,15],
+      head:['N°','Patente','Inicio','Fin','Zona','Límite','Vel. máx','Km/h sobre el límite','Registros','Sentido','Conductor','RUT','Origen del conductor','Hora checklist','Otros con checklist en la ventana','Ubicación del peak','Mapa'],
       rows:rowsE.length?rowsE:[['','','','','','','','','','','Sin excesos según el límite y la faena configurada']],flag:function(d){return d[0]!=='';},redCols:[6,7],mutedCol:12}]},
     {name:'Tránsitos (completo)',title:'TRÁNSITOS COMPLETOS · CON Y SIN EXCESO',sub:sub,widths:[5,11,17,17,10,10,12,10,10,10,12,30,13,26,13,12,28,44,44],blocks:[{type:'table',filter:true,left:[11,13,16,17,18],
       head:['N°','Patente','Inicio','Fin','Duración (min)','Registros GPS','Zona','Vel. máx (km/h)','¿Exceso?','Registros en exceso','Máx. sobre el límite (km/h)','Conductor','RUT','Origen del conductor','Hora checklist','Tiempo desde/hasta checklist','Otros con checklist en la ventana','Ubicación inicio','Ubicación fin'],
@@ -706,7 +760,9 @@ function exportarTransitos(){
       rows:rowsP,flag:function(d){return d[6]==='Exceso';},flagCol:6,redCols:[3,7],fmt:{10:'0.000000',11:'0.000000'}}]}];
   var d0=String(all[0].fecha).split(' ')[0],d1=String(all[all.length-1].fecha).split(' ')[0];
   var nombre='Transitos_Completos_'+d0+(d1!==d0?'_al_'+d1:'')+'.xlsx';
-  guardarXlsx(nombre,hojas,'Descargado <b>'+nombre+'</b> · '+rowsT.length+' tránsitos ('+conEx+' con exceso) · '+rowsE.length+' episodio'+(rowsE.length===1?'':'s')+' de exceso'+(CK.length?'':' · <b>sin checklist cargado: no trae conductores</b>')+'.',CK.length?'ok':'warn');
+  var fin=function(){guardarXlsx(nombre,hojas,'Descargado <b>'+nombre+'</b> · '+rowsT.length+' tránsitos ('+conEx+' con exceso) · '+rowsE.length+' episodio'+(rowsE.length===1?'':'s')+' de exceso'+(rowsE.length?' con su mapa':'')+(CK.length?'':' · <b>sin checklist cargado: no trae conductores</b>')+'.',CK.length?'ok':'warn');};
+  if(!EPIS.length)return fin();
+  hojaMapas(EPIS,sub).then(function(h){if(h)hojas.splice(2,0,h);fin();}).catch(fin);
 }
 el('btnTransitos').onclick=exportarTransitos;
 
