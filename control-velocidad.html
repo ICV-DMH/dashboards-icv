@@ -89,6 +89,22 @@
   .tablewrap h3 .hint{font-size:11.5px;font-weight:500;color:var(--muted)}
   
   .scrollbody{max-height:300px;overflow:auto}
+  .tablewrap h3.dethead{flex-wrap:wrap}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-left:6px}
+  .seg button{border:0;background:#fff;padding:6px 12px;font:600 12px inherit;font-family:inherit;color:var(--muted);cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--navy);color:#fff}
+  .seg button.on.exc{background:var(--bad)}
+  #detPat{font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink,#1f2937)}
+  #detBody tr{cursor:pointer}
+  #detBody tr:hover td{background:#f3f6fb}
+  #detBody tr.ex td{background:#fdecee}
+  #detBody tr.ex:hover td{background:#fadadf}
+  .stx{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap}
+  .stx.ex{background:var(--bad);color:#fff}.stx.okk{background:var(--okbg);color:var(--ok)}
+  .detmore{padding:10px 16px;text-align:center;border-top:1px solid var(--line)}
+  .detres{font-size:12px;color:var(--muted);padding:9px 16px;border-bottom:1px solid var(--line);background:#fafbfc;line-height:1.5}
+  .detres b{color:var(--navy)}.detres b.bad{color:var(--bad)}
   .empty{padding:26px;text-align:center;color:var(--muted);font-size:13px}
   .foot{color:var(--muted);font-size:11.5px;padding:14px 4px;line-height:1.5}
   .credit{margin:8px 0 18px;padding:14px 18px;background:var(--navy);border-radius:12px;text-align:center;font-size:13.5px;color:#dbe4f0;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
@@ -186,6 +202,7 @@
       <label>Informe</label>
       <div class="btns">
         <button class="b" id="btnCsv" title="Descarga un .xls con el mismo formato del reporte de Salfa, solo con los excesos">⤓ Exportar excesos (.xls)</button>
+        <button class="b primary" id="btnTransitos" title="Excel con todos los tránsitos (con y sin exceso) y quién manejaba, más una hoja con los excesos de velocidad">⤓ Tránsitos completos (.xlsx)</button>
         <button class="b" id="btnCkRes2" title="Descarga un Excel con el resumen de los checklist cargados">⤓ Resumen checklist (.xlsx)</button>
       </div>
     </div>
@@ -223,6 +240,22 @@
         <tbody id="epiBody"></tbody>
       </table>
     </div>
+  </div>
+
+  <div class="tablewrap" id="detWrap">
+    <h3 class="dethead">Detalle de velocidades <span class="hint">· todos los registros, con o sin exceso · clic en una fila para verla en el mapa</span>
+      <span class="seg" role="group" aria-label="Filtro de registros"><button type="button" id="detTodos" class="on" aria-pressed="true">Todos</button><button type="button" id="detExc" class="exc" aria-pressed="false">Solo excesos</button></span>
+      <select id="detPat" aria-label="Camioneta"><option value="">Todas las camionetas</option></select>
+      <button class="b" id="btnDetXls" title="Descarga en Excel lo que muestra esta tabla (respeta el filtro)">⤓ Exportar detalle (.xlsx)</button>
+      <span class="pill" id="detPill">0</span></h3>
+    <div class="detres" id="detRes"></div>
+    <div class="scrollbody" style="max-height:440px">
+      <table>
+        <thead><tr><th>Fecha y hora</th><th>Patente</th><th class="num">Km/h</th><th class="num">Límite</th><th>Zona</th><th>Estado</th><th>Conductor</th><th>Ubicación</th></tr></thead>
+        <tbody id="detBody"></tbody>
+      </table>
+    </div>
+    <div class="detmore" id="detMore" hidden><button class="b" id="btnDetMas">Mostrar más</button></div>
   </div>
 
   <div class="foot">
@@ -337,7 +370,58 @@ function render(){
     tr.innerHTML='<td><span class="movlink">'+e.movil+'</span></td><td>'+e.patente+'</td><td>'+e.pts[0].fecha+'</td><td>'+zona+'</td><td><span class="sent '+(e.sent.sub==='subiendo'?'sube':e.sent.sub==='bajando'?'baja':'')+'">'+e.sent.corto+'</span></td><td>'+condHTML(e.cond)+'</td><td class="num">'+e.pts.length+'</td><td class="num">'+e.peor._lim+'</td><td class="num vmax">'+e.vmax+'</td><td>'+e.peor.ubic+'</td>';
     tb.appendChild(tr);
   });
+  renderDetalle(true);
 }
+
+/* ================= Detalle de velocidades (todos los registros) ================= */
+var DET={exc:false,pat:'',n:400,rows:[]};
+function condPunto(p){if(!CK.length)return null;if(p._ckN!==CK.length||p._ckRef!==CK){p._ckN=CK.length;p._ckRef=CK;p._cond=buscarConductor({pts:[p],patente:p.patente});}return p._cond;}
+function condTxt(c){if(!c)return '';if(c.st==='ok')return c.cond;if(c.st==='prob')return 'Probable: '+c.cond;return 'Sin checklist';}
+function renderDetalle(reset){
+  if(reset)DET.n=400;
+  var sel=el('detPat'),pats={};PUNTOS.forEach(function(p){pats[p.patente]=1;});
+  var lista=Object.keys(pats).sort(),act=sel.value;
+  sel.innerHTML='<option value="">Todas las camionetas ('+lista.length+')</option>'+lista.map(function(p){return '<option'+(p===act?' selected':'')+'>'+p+'</option>';}).join('');
+  if(lista.indexOf(act)<0)sel.value='';DET.pat=sel.value;
+  var rows=PUNTOS.filter(function(p){return (!DET.pat||p.patente===DET.pat)&&(!DET.exc||p._exc);}).slice().sort(function(a,b){return (a._t-b._t)||(a.patente<b.patente?-1:a.patente>b.patente?1:0);});
+  DET.rows=rows;
+  var base=PUNTOS.filter(function(p){return !DET.pat||p.patente===DET.pat;}),nEx=base.filter(function(p){return p._exc;}).length;
+  var quien={};if(CK.length)base.forEach(function(p){if(p._exc){var c=condPunto(p);var k=c&&(c.st==='ok'||c.st==='prob')?c.cond:'Sin checklist';quien[k]=(quien[k]||0)+1;}});
+  var qk=Object.keys(quien).sort(function(a,b){return quien[b]-quien[a];});
+  el('detRes').innerHTML=base.length?('<b>'+base.length+'</b> registros'+(DET.pat?' de '+DET.pat:'')+' · <b>'+(base.length-nEx)+'</b> dentro del límite · <b class="bad">'+nEx+'</b> sobre el límite'+(nEx?(CK.length?' · <b>Sobrepasaron:</b> '+qk.map(function(k){return k+' ('+quien[k]+')';}).join(', '):' · carga el checklist (paso 2) para ver quién manejaba'):'')):'Sin registros cargados.';
+  el('detPill').textContent=rows.length;
+  el('detTodos').classList.toggle('on',!DET.exc);el('detExc').classList.toggle('on',DET.exc);
+  el('detTodos').setAttribute('aria-pressed',String(!DET.exc));el('detExc').setAttribute('aria-pressed',String(DET.exc));
+  var tb=el('detBody'),h=[],n=Math.min(DET.n,rows.length);
+  for(var i=0;i<n;i++){var p=rows[i],c=condPunto(p);
+    h.push('<tr data-i="'+i+'" class="'+(p._exc?'ex':'')+'" tabindex="0"><td>'+p.fecha+'</td><td>'+p.patente+'</td><td class="num'+(p._exc?' vmax':'')+'">'+p.kmh+'</td><td class="num">'+p._lim+'</td><td>'+(p._dentro?'<span class="tag in">Faena</span>':'<span class="tag out">Ruta</span>')+'</td><td>'+(p._exc?'<span class="stx ex">Exceso +'+(p.kmh-p._lim)+'</span>':'<span class="stx okk">Dentro del límite</span>')+'</td><td>'+condHTML(c)+'</td><td>'+(p.ubic||'')+'</td></tr>');}
+  tb.innerHTML=h.length?h.join(''):'<tr><td colspan="8" class="empty">'+(DET.exc?'Ningún registro sobre el límite con este filtro.':'Sin registros.')+'</td></tr>';
+  el('detMore').hidden=rows.length<=n;el('btnDetMas').textContent='Mostrar más ('+n+' de '+rows.length+')';
+}
+el('detTodos').onclick=function(){DET.exc=false;renderDetalle(true);};
+el('detExc').onclick=function(){DET.exc=true;renderDetalle(true);};
+el('detPat').onchange=function(){renderDetalle(true);};
+el('btnDetMas').onclick=function(){DET.n+=1000;renderDetalle(false);};
+function verPunto(tr){var p=DET.rows[+tr.getAttribute('data-i')];if(!p||!HAS_MAP||!map)return;
+  map.setView([p.lat,p.lon],16);L.popup().setLatLng([p.lat,p.lon]).setContent('<b>'+p.patente+'</b><br>'+p.fecha+'<br><b>'+p.kmh+' km/h</b> (límite '+p._lim+', '+(p._dentro?'faena':'ruta')+')'+(CK.length?'<br>Conductor: '+(condTxt(condPunto(p))||'—'):'')+'<br>'+(p.ubic||'')).openOn(map);
+  el('map').scrollIntoView({behavior:'smooth',block:'center'});}
+el('detBody').addEventListener('click',function(e){var tr=e.target.closest('tr[data-i]');if(tr)verPunto(tr);});
+el('detBody').addEventListener('keydown',function(e){if(e.key==='Enter'){var tr=e.target.closest('tr[data-i]');if(tr)verPunto(tr);}});
+el('btnDetXls').onclick=function(){
+  var rows=DET.rows;if(!rows.length){msg('No hay registros para exportar con este filtro. Carga primero el reporte de MiGPS (paso 1).','err');return;}
+  var okc=function(c){return c&&(c.st==='ok'||c.st==='prob');};
+  var data=rows.map(function(p){var c=condPunto(p);var f=String(p.fecha).split(' ');
+    return [f[0],f[1]||'',p.patente,p.kmh,p._lim,p._dentro?'Faena':'Ruta',p._exc?'Exceso':'Dentro del límite',p._exc?p.kmh-p._lim:'',okc(c)?c.cond:'',okc(c)?(c.rut||''):'',!c?'Checklist no cargado':c.st==='ok'?'Checklist previo ('+horasTxt(c.h)+' antes)':c.st==='prob'?'Probable (checklist '+horasTxt(c.h)+' después)':'Sin checklist',okc(c)?fmtCk(c.t):'',p.lat,p.lon,p.ubic||''];});
+  var d0=String(rows[0].fecha).split(' ')[0],d1=String(rows[rows.length-1].fecha).split(' ')[0];
+  var nEx=rows.filter(function(p){return p._exc;}).length;
+  var hojas=[{name:DET.exc?'Solo excesos':'Todas las velocidades',title:(DET.exc?'REGISTROS SOBRE EL LÍMITE DE VELOCIDAD':'DETALLE DE VELOCIDADES · CON Y SIN EXCESO')+(DET.pat?' · '+DET.pat:''),
+    sub:subICV('MiGPS × checklist pre-uso · '+d0+(d1!==d0?' al '+d1:'')+' · '+rows.length+' registros · '+nEx+' sobre el límite'),
+    widths:[12,8,11,8,8,8,17,10,32,13,28,13,12,12,52],
+    blocks:[{type:'table',filter:true,left:[8,10,14],head:['Fecha','Hora','Patente','Km/h','Límite','Zona','Estado','Km/h sobre el límite','Conductor','RUT','Origen del conductor','Hora checklist','Latitud','Longitud','Ubicación'],
+      rows:data,flag:function(d){return d[6]==='Exceso';},flagCol:6,redCols:[3,7],mutedCol:10,fmt:{12:'0.000000',13:'0.000000'}}]}];
+  var nombre='Detalle_Velocidades_'+(DET.exc?'Solo_Excesos':'Todas')+(DET.pat?'_'+DET.pat:'')+'_'+d0+(d1!==d0?'_al_'+d1:'')+'.xlsx';
+  guardarXlsx(nombre,hojas,'Detalle descargado: <b>'+nombre+'</b> · '+rows.length+' registros.');
+};
 
 /* ================= Checklist pre-uso: cruce de conductor ================= */
 var FLOTA=['TPSD-89','TTHX-66','VCLP-75','VCTG-46','VHWF-69','VHWG-14','VHWG-15','VHWG-18','VHXT-70','VHXT-72','VHXT-74','VHXT-93','VKLT-36'];
@@ -483,10 +567,56 @@ function actualizarPasos(epis){
 el('file2').addEventListener('change',function(ev){cargarChecklist(ev.target.files[0]);ev.target.value='';});
 el('btnCk').addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();el('file2').click();}});
 el('btnCkReset').onclick=function(){CK=[];CKINFO=null;render();};
+/* ===== Excel con formato ejecutivo (ExcelJS; si no carga, SheetJS sin formato) ===== */
+var LOGO_ICV='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';
+function cargarExcelJS(){return new Promise(function(ok,ko){if(window.ExcelJS)return ok(window.ExcelJS);var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';s.onload=function(){window.ExcelJS?ok(window.ExcelJS):ko(new Error('ExcelJS no disponible'));};s.onerror=function(){ko(new Error('No se pudo cargar ExcelJS'));};document.head.appendChild(s);});}
+var XC={rojo:'FFCD2017',gris:'FF58595B',osc:'FF404040',borde:'FFBFBFBF',rosa:'FFFBE4E2',rojoT:'FF9E1A13',grisT:'FF8A8A8A',suave:'FFF2F2F2',verdeT:'FF1E7E34'};
+function descargarBlob(buf,nombre){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=nombre;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);}
+function xlsPlano(nombre,hojas){var wb=XLSX.utils.book_new();hojas.forEach(function(h){var aoa=[[h.title],[h.sub],[]];h.blocks.forEach(function(b){if(b.title)aoa.push([b.title]);if(b.type==='note')aoa.push([b.text]);else{aoa.push(b.head||['Indicador','Valor']);b.rows.forEach(function(r){aoa.push(r);});}aoa.push([]);});
+  var ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=(h.widths||[]).map(function(w){return {wch:w};});XLSX.utils.book_append_sheet(wb,ws,h.name.slice(0,31));});descargarBlob(XLSX.write(wb,{bookType:'xlsx',type:'array'}),nombre);}
+function xlsEjecutivo(nombre,hojas){return cargarExcelJS().then(function(EJ){
+  var wb=new EJ.Workbook();wb.creator='ICV DMH';wb.created=new Date();var logo=wb.addImage({base64:LOGO_ICV,extension:'png'});
+  var bd={style:'thin',color:{argb:XC.borde}},BORD={top:bd,left:bd,bottom:bd,right:bd};
+  var fill=function(c){return {type:'pattern',pattern:'solid',fgColor:{argb:c}};};
+  var F=function(o){var f={name:'Calibri',size:10};for(var k in o)f[k]=o[k];return f;};
+  hojas.forEach(function(h){
+    var W=h.widths||[34,44],nc=Math.max(2,W.length),tw=W.reduce(function(a,x){return a+x;},0);
+    var ws=wb.addWorksheet(h.name.slice(0,31),{views:[{showGridLines:false}],pageSetup:{orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3}}});
+    ws.columns=W.map(function(w){return {width:w};});
+    ws.getRow(1).height=62;ws.addImage(logo,{tl:{col:0.15,row:0.1},ext:{width:80,height:74}});
+    var band=function(r,txt,color,sz,hg,bold){ws.mergeCells(r,1,r,nc);var c=ws.getCell(r,1);c.value=txt;c.font=F({size:sz,bold:bold,color:{argb:'FFFFFFFF'}});c.fill=fill(color);c.alignment={vertical:'middle',horizontal:'left',indent:1};ws.getRow(r).height=hg;};
+    band(2,h.title,XC.rojo,13,25.5,true);band(3,h.sub,XC.gris,9,15.75,false);
+    var r=5,freezeAt=null;
+    h.blocks.forEach(function(b,bi){
+      if(b.title){band(r,b.title,XC.gris,10,20,true);r++;}
+      if(b.type==='note'){ws.mergeCells(r,1,r,nc);var c=ws.getCell(r,1);c.value=b.text;c.font=F({size:9,italic:true,color:{argb:XC.osc}});c.alignment={wrapText:true,vertical:'top',horizontal:'left'};c.border=BORD;ws.getRow(r).height=Math.max(16,Math.ceil(String(b.text).length/(tw*1.05))*13+4);r+=2;return;}
+      var head=b.head||['Indicador','Valor'],hr=r,row=ws.getRow(r),ancho=(b.type==='kv'&&head.length===2&&nc>2);
+      head.forEach(function(t,i){var c=row.getCell(i+1);c.value=t;c.font=F({size:9,bold:true,color:{argb:'FFFFFFFF'}});c.fill=fill(b.headColor||XC.osc);c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=BORD;});
+      if(ancho)ws.mergeCells(r,2,r,nc);row.height=b.headH||(b.type==='kv'?22:30);r++;if(bi===0&&!b.title&&b.type!=='kv')freezeAt=r;
+      b.rows.forEach(function(d,ri){var row=ws.getRow(r),flag=b.flag?b.flag(d):false,hi=b.hi?b.hi(d,ri):false;
+        for(var i=0;i<head.length;i++){var v=d[i],c=row.getCell(i+1);c.value=(v===undefined||v===null)?'':v;
+          var izq=(b.left&&b.left.indexOf(i)>=0)||(b.type==='kv'&&i===0)||(ancho&&i===1&&typeof v==='string');
+          c.font=F({bold:i===0&&(b.type==='kv'||b.boldFirst)});c.alignment={horizontal:izq?'left':'center',vertical:'middle',wrapText:!!(b.wrap&&b.wrap.indexOf(i)>=0),indent:izq?1:0};c.border=BORD;
+          if(b.fmt&&b.fmt[i])c.numFmt=b.fmt[i];
+          if(flag)c.fill=fill(XC.rosa);
+          if(b.flagCol===i){var sv=String(v);if(sv==='SÍ'||sv.indexOf('Exceso')===0)c.font=F({size:9,bold:true,color:{argb:XC.rojoT}});else if(sv==='NO'||sv==='Dentro del límite')c.font=F({size:9,color:{argb:XC.grisT}});}
+          if(flag&&b.redCols&&b.redCols.indexOf(i)>=0)c.font=F({bold:true,color:{argb:XC.rojoT}});
+          if(b.mutedCol===i&&/^Sin checklist|^Checklist no cargado/.test(String(v)))c.font=F({italic:true,color:{argb:XC.rojoT}});
+          if(hi){c.fill=fill(i===0?XC.rojo:XC.suave);c.font=F({bold:true,color:{argb:i===0?'FFFFFFFF':'FF000000'}});}
+        }if(ancho)ws.mergeCells(r,2,r,nc);row.height=b.rowH||18;r++;});
+      if(b.filter&&b.rows.length)ws.autoFilter={from:{row:hr,column:1},to:{row:r-1,column:head.length}};
+      r++;});
+    if(freezeAt)ws.views=[{state:'frozen',xSplit:0,ySplit:freezeAt-1,showGridLines:false}];
+  });
+  return wb.xlsx.writeBuffer().then(function(buf){descargarBlob(buf,nombre);});});}
+function guardarXlsx(nombre,hojas,okMsg,cls){msg('Generando <b>'+nombre+'</b>…','wait');
+  xlsEjecutivo(nombre,hojas).then(function(){msg(okMsg,cls||'ok');}).catch(function(e){
+    if(typeof XLSX!=='undefined'){xlsPlano(nombre,hojas);msg(okMsg+'<br>Se descargó sin formato porque no se pudo cargar el generador con diseño ('+e.message+').','warn');}
+    else msg('No se pudo generar el Excel: '+e.message,'err');});}
+function subICV(t){return 'Ingeniería Civil Vicente S.A. · Contrato DMH · '+t;}
 /* ===== Resumen descargable de los checklist pre-uso ===== */
 function resumenChecklist(){
   if(!CK.length){msg('Primero carga el registro de checklist en el paso 2: presiona <b>Abrir registro</b>, exporta la lista a CSV y cárgala aquí. Luego descarga el resumen.','err');return;}
-  if(typeof XLSX==='undefined'){msg('No se pudo cargar el generador de Excel (revisa la conexión a internet).','err');return;}
   var z=function(n){return(n<10?'0':'')+n;};
   var dkey=function(t){var d=new Date(t);return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());};
   var dfmt=function(k){return k.slice(8,10)+'-'+k.slice(5,7)+'-'+k.slice(0,4);};
@@ -507,45 +637,79 @@ function resumenChecklist(){
     .sort(function(a,b){return b.nd-a.nd||b.n-a.n||a.nm.localeCompare(b.nm);});
   var nF=CK.filter(function(k){return k.falla;}).length,nNA=CK.filter(function(k){return k.noApto;}).length;
   var cats=['Diario','Casi diario','Algunos días','Ocasional'],cc={};cats.forEach(function(x){cc[x]=0;});conds.forEach(function(c){cc[cat(c.pc)]++;});
-  var tit='Resumen checklist pre-uso camionetas · ICV DMH';
-  var res=[[tit],['Período',dfmt(dias[0])+' al '+dfmt(dias[nD-1])+' ('+nD+' día'+(nD>1?'s':'')+')'],['Archivo cargado',(CKINFO&&CKINFO.archivo)||''],['Generado el',fts(Date.now())],[],
-    ['Indicador','Valor'],['Checklists realizados',CK.length],['Conductores distintos',conds.length],['Camionetas con checklist',Object.keys(P).length+' de '+FLOTA.length],
-    ['Promedio de checklists por día',Math.round(CK.length/nD*10)/10]];
-  if(rf){res.push(['Checklists con fallas reportadas',nF]);res.push(['Declaraciones "No estoy apto"',nNA]);}
-  res.push([]);res.push(['Frecuencia del personal','Conductores','% del personal']);
-  var rFreq=res.length;cats.forEach(function(x){res.push([x,cc[x],conds.length?cc[x]/conds.length:0]);});
-  res.push([]);res.push(['Criterio','% de días = días con al menos un checklist ÷ días del período. Diario = 100 %; Casi diario ≥ 70 %; Algunos días ≥ 40 %; Ocasional < 40 %. No considera turnos ni días libres.']);
-  var wsR=XLSX.utils.aoa_to_sheet(res);for(var i=0;i<cats.length;i++){var a=XLSX.utils.encode_cell({r:rFreq+i,c:2});if(wsR[a])wsR[a].z='0%';}
-  wsR['!cols']=[{wch:34},{wch:44},{wch:16}];
-  var hC=['#','Nombre y apellido','RUT','Checklists','Días con checklist','% de días del período','Frecuencia','Camionetas'].concat(rf?['Con fallas','No apto']:[]).concat(['Primer registro','Último registro']);
-  var aC=[hC].concat(conds.map(function(c,i){return [i+1,c.nm,c.rut||'',c.n,c.nd,c.pc,cat(c.pc),c.pats].concat(rf?[c.f,c.na]:[]).concat([fts(c.ini),fts(c.fin)]);}));
-  var wsC=XLSX.utils.aoa_to_sheet(aC);for(var r=1;r<aC.length;r++){var a2=XLSX.utils.encode_cell({r:r,c:5});wsC[a2].z='0%';}
-  wsC['!cols']=[{wch:4},{wch:34},{wch:12},{wch:11},{wch:10},{wch:12},{wch:13},{wch:30}].concat(rf?[{wch:10},{wch:9}]:[]).concat([{wch:17},{wch:17}]);
-  wsC['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aC.length-1,c:hC.length-1}})};
+  var per=dfmt(dias[0])+' al '+dfmt(dias[nD-1])+' ('+nD+' día'+(nD>1?'s':'')+')';
+  var ind=[['Checklists realizados',CK.length],['Conductores distintos',conds.length],['Camionetas con checklist',Object.keys(P).length+' de '+FLOTA.length],['Promedio de checklists por día',Math.round(CK.length/nD*10)/10]];
+  if(rf){ind.push(['Checklists con fallas reportadas',nF]);ind.push(['Declaraciones "No estoy apto"',nNA]);}
+  var sub=subICV('Checklist pre-uso camionetas · Período '+per);
+  var hojas=[{name:'Resumen',title:'RESUMEN · CHECKLIST PRE-USO CAMIONETAS',sub:sub,widths:[40,30,16],blocks:[
+      {type:'kv',title:'PERÍODO Y FUENTE',head:['Dato','Detalle'],rows:[['Período',per],['Archivo cargado',(CKINFO&&CKINFO.archivo)||''],['Generado el',fts(Date.now())]]},
+      {type:'kv',title:'INDICADORES',head:['Indicador','Valor'],rows:ind,hi:function(d,i){return i===0;}},
+      {type:'kv',title:'FRECUENCIA DEL PERSONAL',head:['Frecuencia','Conductores','% del personal'],rows:cats.map(function(x){return [x,cc[x],conds.length?cc[x]/conds.length:0];}),fmt:{2:'0%'}},
+      {type:'note',title:'CRITERIO',text:'% de días = días con al menos un checklist ÷ días del período. Diario = 100 %; Casi diario ≥ 70 %; Algunos días ≥ 40 %; Ocasional < 40 %. No considera turnos ni días libres.'}]},
+    {name:'Por conductor',title:'CHECKLIST PRE-USO · POR CONDUCTOR',sub:sub,widths:[5,34,13,11,11,12,13,30].concat(rf?[10,9]:[]).concat([17,17]),blocks:[{type:'table',filter:true,boldFirst:false,left:[1,7],
+      head:['N°','Nombre y apellido','RUT','Checklists','Días con checklist','% de días del período','Frecuencia','Camionetas'].concat(rf?['Con fallas','No apto']:[]).concat(['Primer registro','Último registro']),
+      rows:conds.map(function(c,i){return [i+1,c.nm,c.rut||'',c.n,c.nd,c.pc,cat(c.pc),c.pats].concat(rf?[c.f,c.na]:[]).concat([fts(c.ini),fts(c.fin)]);}),fmt:{5:'0%'}}]}];
   var pats=FLOTA.slice();Object.keys(P).forEach(function(p){if(pats.indexOf(p)<0)pats.push(p);});
-  var hP=['Patente','Checklists','Días con checklist','% de días del período','Conductores distintos'].concat(rf?['Con fallas']:[]).concat(['Último registro']);
-  var aP=[hP].concat(pats.map(function(p){var o=P[p];var nd=o?Object.keys(o.d).length:0;return [p,o?o.n:0,nd,nd/nD,o?Object.keys(o.c).length:0].concat(rf?[o?o.f:0]:[]).concat([o?fts(o.fin):'Sin checklist']);})
-    .sort(function(a,b){return b[1]-a[1]||String(a[0]).localeCompare(b[0]);}));
-  var wsP=XLSX.utils.aoa_to_sheet(aP);for(r=1;r<aP.length;r++)wsP[XLSX.utils.encode_cell({r:r,c:3})].z='0%';
-  wsP['!cols']=[{wch:11},{wch:11},{wch:10},{wch:12},{wch:12}].concat(rf?[{wch:10}]:[]).concat([{wch:17}]);
-  var hD=['Fecha','Checklists','Conductores','Camionetas','% de la flota'].concat(rf?['Con fallas','No apto']:[]);
-  var aD=[hD].concat(dias.map(function(k){var o=D[k];var np=Object.keys(o.p).length;return [dfmt(k),o.n,Object.keys(o.c).length,np,np/FLOTA.length].concat(rf?[o.f,o.na]:[]);}));
-  var wsD=XLSX.utils.aoa_to_sheet(aD);for(r=1;r<aD.length;r++)wsD[XLSX.utils.encode_cell({r:r,c:4})].z='0%';
-  wsD['!cols']=[{wch:12},{wch:11},{wch:12},{wch:11},{wch:12}].concat(rf?[{wch:10},{wch:9}]:[]);
-  var hX=['Fecha','Hora','Patente','Conductor','RUT'].concat(rf?['Apto','Falla reportada']:[]);
-  var aX=[hX].concat(CK.map(function(k){return [dfmt(dkey(k.t)),hm(k.t),k.pat,k.cond,k.rut||''].concat(rf?[k.noApto?'No':'Sí',k.falla?'Sí':'No']:[]);}));
-  var wsX=XLSX.utils.aoa_to_sheet(aX);wsX['!cols']=[{wch:12},{wch:7},{wch:10},{wch:34},{wch:12}].concat(rf?[{wch:7},{wch:14}]:[]);
-  wsX['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aX.length-1,c:hX.length-1}})};
-  var wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,wsR,'Resumen');XLSX.utils.book_append_sheet(wb,wsC,'Por conductor');XLSX.utils.book_append_sheet(wb,wsP,'Por camioneta');
-  XLSX.utils.book_append_sheet(wb,wsD,'Por día');XLSX.utils.book_append_sheet(wb,wsX,'Detalle');
+  hojas.push({name:'Por camioneta',title:'CHECKLIST PRE-USO · POR CAMIONETA',sub:sub,widths:[12,11,11,12,12].concat(rf?[10]:[]).concat([18]),blocks:[{type:'table',filter:true,boldFirst:true,
+    head:['Patente','Checklists','Días con checklist','% de días del período','Conductores distintos'].concat(rf?['Con fallas']:[]).concat(['Último registro']),
+    rows:pats.map(function(p){var o=P[p];var nd=o?Object.keys(o.d).length:0;return [p,o?o.n:0,nd,nd/nD,o?Object.keys(o.c).length:0].concat(rf?[o?o.f:0]:[]).concat([o?fts(o.fin):'Sin checklist']);}).sort(function(a,b){return b[1]-a[1]||String(a[0]).localeCompare(b[0]);}),
+    fmt:{3:'0%'},flag:function(d){return d[1]===0;}}]});
+  hojas.push({name:'Por día',title:'CHECKLIST PRE-USO · POR DÍA',sub:sub,widths:[13,11,12,11,12].concat(rf?[10,9]:[]),blocks:[{type:'table',filter:true,boldFirst:true,
+    head:['Fecha','Checklists','Conductores','Camionetas','% de la flota'].concat(rf?['Con fallas','No apto']:[]),
+    rows:dias.map(function(k){var o=D[k];var np=Object.keys(o.p).length;return [dfmt(k),o.n,Object.keys(o.c).length,np,np/FLOTA.length].concat(rf?[o.f,o.na]:[]);}),fmt:{4:'0%'}}]});
+  hojas.push({name:'Detalle',title:'CHECKLIST PRE-USO · DETALLE DE REGISTROS',sub:sub,widths:[12,8,11,34,13].concat(rf?[8,14]:[]),blocks:[{type:'table',filter:true,left:[3],
+    head:['Fecha','Hora','Patente','Conductor','RUT'].concat(rf?['Apto','Falla reportada']:[]),
+    rows:CK.map(function(k){return [dfmt(dkey(k.t)),hm(k.t),k.pat,k.cond,k.rut||''].concat(rf?[k.noApto?'No':'Sí',k.falla?'Sí':'No']:[]);}),flag:function(d){return rf&&(d[5]==='No'||d[6]==='Sí');}}]});
   var nombre='Resumen_Checklist_PreUso_'+dfmt(dias[0])+'_al_'+dfmt(dias[nD-1])+'.xlsx';
-  var out=XLSX.write(wb,{bookType:'xlsx',type:'array'});
-  var a3=document.createElement('a');a3.href=URL.createObjectURL(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a3.download=nombre;
-  document.body.appendChild(a3);a3.click();setTimeout(function(){URL.revokeObjectURL(a3.href);a3.remove();},1500);
-  msg('Resumen descargado: <b>'+nombre+'</b> · '+CK.length+' checklists, '+conds.length+' conductores, '+nD+' días.','ok');
+  guardarXlsx(nombre,hojas,'Resumen descargado: <b>'+nombre+'</b> · '+CK.length+' checklists, '+conds.length+' conductores, '+nD+' días.');
 }
 el('btnCkRes').onclick=resumenChecklist;el('btnCkRes2').onclick=resumenChecklist;
+/* ================= Tránsitos completos (con y sin exceso) ================= */
+var GAP_TRANSITO_MIN=15;
+function exportarTransitos(){
+  if(!PUNTOS.length||USANDO_EJEMPLO){msg('Primero carga el reporte "Velocidad sobre la Máxima" de MiGPS en el paso 1 (y el checklist en el paso 2 para saber quién manejaba).','err');return;}
+  var pts=PUNTOS.slice().sort(function(a,b){return a.patente<b.patente?-1:a.patente>b.patente?1:(a._t-b._t)||(a._ix-b._ix);});
+  var TR=[],cur=null,gap=GAP_TRANSITO_MIN*60000;
+  pts.forEach(function(p){if(cur&&cur.patente===p.patente&&p._t-cur.fin._t<=gap){cur.pts.push(p);cur.fin=p;}else{cur={patente:p.patente,pts:[p],ini:p,fin:p};TR.push(cur);}});
+  TR.sort(function(a,b){return a.ini._t-b.ini._t||(a.patente<b.patente?-1:1);});
+  var org=function(c){return !c?'Checklist no cargado':c.st==='ok'?'Checklist previo':c.st==='prob'?'Probable (checklist posterior)':'Sin checklist';};
+  var okc=function(c){return c&&(c.st==='ok'||c.st==='prob');};
+  var rowsT=TR.map(function(t,i){var c=CK.length?buscarConductor({pts:[t.ini],patente:t.patente}):null;var vm=t.pts.reduce(function(m,p){return p.kmh>m.kmh?p:m;},t.pts[0]);
+    var ex=t.pts.filter(function(p){return p._exc;}),nf=t.pts.filter(function(p){return p._dentro;}).length;
+    var sob=ex.reduce(function(m,p){return Math.max(m,p.kmh-p._lim);},0);
+    return [i+1,t.patente,t.ini.fecha,t.fin.fecha,Math.round((t.fin._t-t.ini._t)/60000),t.pts.length,nf===t.pts.length?'Faena':nf===0?'Ruta':'Faena y ruta',vm.kmh,ex.length?'SÍ':'NO',ex.length,ex.length?sob:'',
+      okc(c)?c.cond:'',okc(c)?(c.rut||''):'',org(c),okc(c)?fmtCk(c.t):'',okc(c)?horasTxt(c.h):'',c&&c.otros&&c.otros.length?c.otros.join(', '):'',t.ini.ubic||'',t.fin.ubic||''];});
+  var rowsE=EPIS.map(function(e,i){var c=e.cond;var s=e.pts.slice().sort(cmpT);return [i+1,e.patente,s[0].fecha,s[s.length-1].fecha,e.dentro?'Faena':'Ruta',e.peor._lim,e.vmax,e.vmax-e.peor._lim,e.pts.length,(e.sent&&e.sent.corto)||'',
+      okc(c)?c.cond:'',okc(c)?(c.rut||''):'',org(c),okc(c)?fmtCk(c.t):'',c&&c.otros&&c.otros.length?c.otros.join(', '):'',e.peor.ubic||''];});
+  var all=PUNTOS.slice().sort(function(a,b){return a._t-b._t||(a.patente<b.patente?-1:1);});
+  var rowsP=all.map(function(p){var c=condPunto(p);var f=String(p.fecha).split(' ');return [f[0],f[1]||'',p.patente,p.kmh,p._lim,p._dentro?'Faena':'Ruta',p._exc?'Exceso':'Dentro del límite',p._exc?p.kmh-p._lim:'',okc(c)?c.cond:'',okc(c)?(c.rut||''):'',p.lat,p.lon,p.ubic||''];});
+  var conEx=rowsT.filter(function(r){return r[8]==='SÍ';}).length;
+  var quien={};rowsE.forEach(function(r){var k=r[10]||(r[12]==='Checklist no cargado'?'(checklist no cargado)':'Sin checklist');quien[k]=(quien[k]||0)+1;});
+  var pc={};rowsT.forEach(function(r){var o=pc[r[1]]=pc[r[1]]||{n:0,e:0,vm:0,c:{}};o.n++;if(r[8]==='SÍ')o.e++;o.vm=Math.max(o.vm,r[7]);if(r[11])o.c[r[11]]=1;});
+  var limF=+el('limFaena').value,limO=+el('limFuera').value;
+  var per=all[0].fecha+' al '+all[all.length-1].fecha;var sub=subICV('Control de velocidad camionetas · MiGPS × checklist pre-uso · '+per);
+  var hojas=[
+    {name:'Resumen',title:'TRÁNSITOS COMPLETOS · CONTROL DE VELOCIDAD CAMIONETAS',sub:sub,widths:[46,22,22,60],blocks:[
+      {type:'kv',title:'PERÍODO Y FUENTES',head:['Dato','Detalle'],rows:[['Período con datos',per],['Reporte MiGPS','Velocidad sobre la Máxima (detalle) · '+all.length+' registros'],['Checklist pre-uso',CK.length?(CK.length+' registros'+(CKINFO&&CKINFO.archivo?' · '+CKINFO.archivo:'')):'No cargado (sin conductores)'],['Límites aplicados',limF+' km/h en faena · '+limO+' km/h en ruta']]},
+      {type:'kv',title:'INDICADORES',head:['Indicador','Valor'],rows:[['Tránsitos',rowsT.length],['Tránsitos con exceso',conEx],['Tránsitos sin exceso',rowsT.length-conEx],['Episodios de exceso',rowsE.length],['Registros GPS',all.length],['Tránsitos con conductor por checklist previo',rowsT.filter(function(r){return r[13]==='Checklist previo';}).length],['Tránsitos con conductor probable',rowsT.filter(function(r){return r[13].indexOf('Probable')===0;}).length],['Tránsitos sin checklist',rowsT.filter(function(r){return r[13]==='Sin checklist';}).length]],hi:function(d){return d[0]==='Tránsitos con exceso';}},
+      {type:'kv',title:'QUIÉN SOBREPASÓ LA VELOCIDAD',head:['Conductor','Episodios de exceso'],rows:Object.keys(quien).length?Object.keys(quien).sort(function(a,b){return quien[b]-quien[a];}).map(function(k){return [k,quien[k]];}):[['Sin excesos en el período',0]]},
+      {type:'table',title:'POR CAMIONETA',head:['Patente','Tránsitos','Con exceso','Conductores (checklist)'],boldFirst:true,left:[3],wrap:[3],rows:Object.keys(pc).sort(function(a,b){return pc[b].e-pc[a].e||pc[b].n-pc[a].n;}).map(function(p){return [p,pc[p].n,pc[p].e,Object.keys(pc[p].c).sort().join(', ')||'Sin checklist'];}),flag:function(d){return d[2]>0;},redCols:[2]},
+      {type:'note',title:'CRITERIOS',text:'Límite '+limF+' km/h dentro del perímetro de faena y '+limO+' km/h en ruta. Tránsito = registros seguidos de la misma camioneta con ≤ '+GAP_TRANSITO_MIN+' min entre uno y otro. Episodio de exceso = registros sobre el límite con ≤ '+el('gapMin').value+' min entre sí. Conductor = último checklist "apto" de esa patente en las '+VENTANA_H+' h previas; si no hay, el primero dentro de las '+POST_H+' h siguientes (probable). MiGPS solo entrega registros sobre el umbral pedido al exportar; lo que anduvo más lento no aparece.'}]},
+    {name:'Excesos de velocidad',title:'EXCESOS DE VELOCIDAD · EPISODIOS',sub:sub,widths:[5,11,17,17,8,8,9,10,9,15,30,13,25,13,28,48],blocks:[{type:'table',filter:true,left:[10,12,14,15],
+      head:['N°','Patente','Inicio','Fin','Zona','Límite','Vel. máx','Km/h sobre el límite','Registros','Sentido','Conductor','RUT','Origen del conductor','Hora checklist','Otros con checklist en la ventana','Ubicación del peak'],
+      rows:rowsE.length?rowsE:[['','','','','','','','','','','Sin excesos según el límite y la faena configurada']],flag:function(d){return d[0]!=='';},redCols:[6,7],mutedCol:12}]},
+    {name:'Tránsitos (completo)',title:'TRÁNSITOS COMPLETOS · CON Y SIN EXCESO',sub:sub,widths:[5,11,17,17,10,10,12,10,10,10,12,30,13,26,13,12,28,44,44],blocks:[{type:'table',filter:true,left:[11,13,16,17,18],
+      head:['N°','Patente','Inicio','Fin','Duración (min)','Registros GPS','Zona','Vel. máx (km/h)','¿Exceso?','Registros en exceso','Máx. sobre el límite (km/h)','Conductor','RUT','Origen del conductor','Hora checklist','Tiempo desde/hasta checklist','Otros con checklist en la ventana','Ubicación inicio','Ubicación fin'],
+      rows:rowsT,flag:function(d){return d[8]==='SÍ';},flagCol:8,redCols:[7,10],mutedCol:13}]},
+    {name:'Detalle de velocidades',title:'DETALLE DE VELOCIDADES · TODOS LOS REGISTROS',sub:sub,widths:[12,8,11,8,8,8,17,10,32,13,12,12,52],blocks:[{type:'table',filter:true,left:[8,12],
+      head:['Fecha','Hora','Patente','Km/h','Límite','Zona','Estado','Km/h sobre el límite','Conductor','RUT','Latitud','Longitud','Ubicación'],
+      rows:rowsP,flag:function(d){return d[6]==='Exceso';},flagCol:6,redCols:[3,7],fmt:{10:'0.000000',11:'0.000000'}}]}];
+  var d0=String(all[0].fecha).split(' ')[0],d1=String(all[all.length-1].fecha).split(' ')[0];
+  var nombre='Transitos_Completos_'+d0+(d1!==d0?'_al_'+d1:'')+'.xlsx';
+  guardarXlsx(nombre,hojas,'Descargado <b>'+nombre+'</b> · '+rowsT.length+' tránsitos ('+conEx+' con exceso) · '+rowsE.length+' episodio'+(rowsE.length===1?'':'s')+' de exceso'+(CK.length?'':' · <b>sin checklist cargado: no trae conductores</b>')+'.',CK.length?'ok':'warn');
+}
+el('btnTransitos').onclick=exportarTransitos;
+
 
 
 
@@ -749,7 +913,7 @@ function cargarArchivos(files){
     if(!nuevosTot&&USANDO_EJEMPLO){msg('No se cargaron datos.<ul>'+lineas.join('')+'</ul>Usa el Excel exportado desde MiGPS (Reporte Velocidad sobre la Máxima).','err');return;}
     if(USANDO_EJEMPLO)RANGOS=[];res.forEach(function(r){if(r.pts&&r.pts.length&&r.rango&&r.rango.ini&&r.rango.fin)RANGOS.push(r.rango);});
     USANDO_EJEMPLO=false; PUNTOS=base;
-    el('introNote').innerHTML='<b>Datos cargados:</b> '+PUNTOS.length+' registros en total. Puedes cargar más archivos y se suman sin duplicar. El conductor solo aparece en los episodios de exceso (paso 2).';
+    el('introNote').innerHTML='<b>Datos cargados:</b> '+PUNTOS.length+' registros en total. Puedes cargar más archivos y se suman sin duplicar. Con el checklist (paso 2) se identifica quién manejaba en cada registro y episodio.';
     render();fitAll();
     msg((hayErr?'Algunos archivos no se pudieron cargar.':'✓ Carga lista: '+PUNTOS.length+' registros en total.')+'<ul>'+lineas.join('')+'</ul>',hayErr||hayAviso?'warn':'ok');
   });
